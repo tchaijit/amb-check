@@ -44,14 +44,24 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 2. Import `tchaijit/amb-check` repository
 3. Click "Import"
 
-### Step 2: Configure Environment Variables
+### Step 2: Configure Environment Variables ⚠️ REQUIRED
 Add these in Vercel Dashboard → Settings → Environment Variables:
 
-**Production & Preview:**
-```
-NEXTAUTH_SECRET=<generated-secret>
-NEXTAUTH_URL=https://your-app.vercel.app
-```
+**IMPORTANT: Add these for ALL environments (Production, Preview, Development)**
+
+1. **NEXTAUTH_SECRET** (Required - Authentication will fail without this!)
+   ```
+   NEXTAUTH_SECRET=kXstwSNbBs+rNh+mGdW5tXPX8Pvuw/HK5uDSPJmBGDY=
+   ```
+   - Generate new: `openssl rand -base64 32`
+   - Or use: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+
+2. **NEXTAUTH_URL** (Required)
+   ```
+   NEXTAUTH_URL=https://your-app.vercel.app
+   ```
+   - Replace with your actual Vercel URL
+   - NO trailing slash!
 
 ### Step 3: (Optional) Setup Database
 If you want to use a real database instead of mock data:

@@ -10,7 +10,21 @@
       "Bash(npm install:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: AMB Check - Ambulance Inspection System\n\nFeatures:\n- Authentication system with NextAuth v5 (4 roles)\n- Multi-role inspection workflow (Driver, Equipment, Nurse, HOD)\n- QR code scanning and generation\n- HOD approval dashboard\n- PDF export for inspection reports\n- Inspection history with advanced filters\n- Statistics dashboard with charts (Pie, Line, Bar)\n- Role-based access control (RBAC)\n- Bilingual interface (Thai/English)\n- Mock data support for development\n- Responsive design with Tailwind CSS\n\nTech Stack:\n- Next.js 15 + TypeScript\n- NextAuth v5\n- Vercel Postgres\n- Recharts, jsPDF, html2canvas\n- html5-qrcode, qrcode.react\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: AMB Check - Ambulance Inspection System\n\nFeatures:\n- Authentication system with NextAuth v5 (4 roles)\n- Multi-role inspection workflow (Driver, Equipment, Nurse, HOD)\n- QR code scanning and generation\n- HOD approval dashboard\n- PDF export for inspection reports\n- Inspection history with advanced filters\n- Statistics dashboard with charts (Pie, Line, Bar)\n- Role-based access control (RBAC)\n- Bilingual interface (Thai/English)\n- Mock data support for development\n- Responsive design with Tailwind CSS\n\nTech Stack:\n- Next.js 15 + TypeScript\n- NextAuth v5\n- Vercel Postgres\n- Recharts, jsPDF, html2canvas\n- html5-qrcode, qrcode.react\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(node -e:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd environment variables and deployment guide\n\n- Add .env.example with all required variables\n- Add DEPLOYMENT.md with step-by-step deployment instructions\n- Generate secure NEXTAUTH_SECRET for production\n- Include Vercel deployment guide\n- Include database setup instructions\n- Include troubleshooting section\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(node scripts/migrate.js:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd comprehensive Settings page with database migration\n\nFeatures added:\n- Settings page with 3 tabs (Profile, System, Password)\n- Profile management with role display\n- System settings (language, notifications, auto-logout)\n- Password change functionality\n- Toggle switches for notification preferences\n- Settings button in home page header\n- Database migration script for Supabase\n- Installed dotenv for environment variable loading\n\nSettings includes:\n- User profile editing\n- Email display (read-only)\n- Role badge display\n- Language selection (Thai/English/Both)\n- In-app and email notification toggles\n- Inspection reminder setting\n- Auto-logout timer (15/30/60 min or never)\n- Password change with validation\n- Logout in danger zone\n\nTechnical:\n- Created /settings route\n- Added to middleware allowed routes\n- Migration script runs full SQL schema\n- Works with Supabase Postgres database\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run build:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(taskkill //F //PID 122352)",
+      "Bash(npx vercel --version)",
+      "Bash(npx vercel --prod --yes)"
     ],
     "deny": [],
     "ask": []
