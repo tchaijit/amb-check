@@ -95,16 +95,28 @@ export async function updateInspectionStatus(
   role: 'driver' | 'equipment_officer' | 'nurse',
   completed: boolean
 ): Promise<void> {
-  const field = role === 'driver' ? 'driver_completed'
-    : role === 'equipment_officer' ? 'equipment_officer_completed'
-    : 'nurse_completed';
-
-  await sql`
-    UPDATE inspections
-    SET ${sql(field)} = ${completed},
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = ${id}
-  `;
+  if (role === 'driver') {
+    await sql`
+      UPDATE inspections
+      SET driver_completed = ${completed},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+  } else if (role === 'equipment_officer') {
+    await sql`
+      UPDATE inspections
+      SET equipment_officer_completed = ${completed},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+  } else {
+    await sql`
+      UPDATE inspections
+      SET nurse_completed = ${completed},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+  }
 }
 
 export async function updateInspectionOverallStatus(

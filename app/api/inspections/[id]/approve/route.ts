@@ -4,10 +4,11 @@ import { approveInspection, getInspectionById } from '@/lib/db';
 // POST - HOD -8!142##'*-
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     const body = await request.json();
     const { hodId } = body;
 

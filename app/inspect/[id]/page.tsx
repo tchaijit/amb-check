@@ -14,7 +14,7 @@ export default function InspectPage() {
 
   const [userRole, setUserRole] = useState<'driver' | 'equipment_officer' | 'nurse'>('driver');
   const [inspection, setInspection] = useState<any>(null);
-  const [items, setItems] = useState<Record<string, InspectionItem>>({});
+  const [items, setItems] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [employeeId, setEmployeeId] = useState('');

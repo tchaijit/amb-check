@@ -34,10 +34,11 @@ const MOCK_AMBULANCES: Record<string, any> = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { qrcode: string } }
+  { params }: { params: Promise<{ qrcode: string }> }
 ) {
   try {
-    const qrCode = params.qrcode;
+    const { qrcode } = await params;
+    const qrCode = qrcode;
 
     let ambulance;
     let todayInspection = null;
