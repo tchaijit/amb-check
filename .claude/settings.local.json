@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /b)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: AMB Check - Ambulance Inspection System\n\nFeatures:\n- Authentication system with NextAuth v5 (4 roles)\n- Multi-role inspection workflow (Driver, Equipment, Nurse, HOD)\n- QR code scanning and generation\n- HOD approval dashboard\n- PDF export for inspection reports\n- Inspection history with advanced filters\n- Statistics dashboard with charts (Pie, Line, Bar)\n- Role-based access control (RBAC)\n- Bilingual interface (Thai/English)\n- Mock data support for development\n- Responsive design with Tailwind CSS\n\nTech Stack:\n- Next.js 15 + TypeScript\n- NextAuth v5\n- Vercel Postgres\n- Recharts, jsPDF, html2canvas\n- html5-qrcode, qrcode.react\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
