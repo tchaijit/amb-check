@@ -72,10 +72,10 @@ INSERT INTO ambulances (vehicle_number, qr_code, license_plate) VALUES
   ('AMB-005', 'AMB-005', 'ชบ-7890 ชลบุรี')
 ON CONFLICT (vehicle_number) DO NOTHING;
 
--- Sample user (for testing)
-INSERT INTO users (email, name, role) VALUES
-  ('driver@hospital.com', 'John Driver', 'driver'),
-  ('equipment@hospital.com', 'Jane Equipment', 'equipment_officer'),
-  ('nurse@hospital.com', 'Mary Nurse', 'nurse'),
-  ('hod@hospital.com', 'Dr. Smith HOD', 'hod')
+-- Sample users (for testing) - all passwords are 'password123'
+INSERT INTO users (email, name, role, password_hash) VALUES
+  ('driver@hospital.com', 'John Driver', 'driver', '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC'),
+  ('equipment@hospital.com', 'Jane Equipment', 'equipment_officer', '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC'),
+  ('nurse@hospital.com', 'Mary Nurse', 'nurse', '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC'),
+  ('hod@hospital.com', 'Dr. Smith HOD', 'hod', '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC')
 ON CONFLICT (email) DO NOTHING;
