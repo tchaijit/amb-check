@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
+
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ["thai", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-noto-sans-thai",
+});
 
 export const metadata: Metadata = {
   title: "AMB Check - ระบบตรวจสอบรถพยาบาล / Ambulance Inspection System",
@@ -15,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
-      <body className="antialiased">
+    <html lang="th" className={notoSansThai.variable}>
+      <body className={`${notoSansThai.className} antialiased`}>
         <SessionProvider>
           <div className="min-h-screen flex flex-col">
             <header className="bg-primary text-white shadow-lg">
