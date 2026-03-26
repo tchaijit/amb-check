@@ -17,7 +17,7 @@ export default auth((req) => {
   const session = req.auth;
 
   // Allow public routes
-  if (pathname === '/' || pathname === '/login' || pathname.startsWith('/api/auth')) {
+  if (pathname === '/' || pathname === '/login' || pathname === '/settings' || pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 

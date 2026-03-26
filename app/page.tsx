@@ -110,12 +110,20 @@ export default function HomePage() {
               <div className="text-sm opacity-90">{roleInfo.name} / {roleInfo.nameEn}</div>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-          >
-            ออกจากระบบ / Logout
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/settings')}
+              className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-30 transition-colors inline-flex items-center gap-2"
+            >
+              ⚙️ <span className="hidden sm:inline">ตั้งค่า / Settings</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+            >
+              ออกจากระบบ / Logout
+            </button>
+          </div>
         </div>
       </div>
 
