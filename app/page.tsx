@@ -1,11 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut, signIn } from 'next-auth/react';
 
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const getRoleInfo = (roleId: string) => {
     const roles: Record<string, any> = {
@@ -61,198 +66,205 @@ export default function HomePage() {
     );
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      } else if (result?.ok) {
+        router.push('/');
+        router.refresh();
+      }
+    } catch (err) {
+      setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Show login prompt if not authenticated
   if (!session) {
     return (
-      <div className="max-w-7xl mx-auto">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 rounded-3xl shadow-2xl mb-12">
-          <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/50"></div>
-
-          <div className="relative px-8 py-16 md:py-24 text-center">
-            <div className="mb-6 animate-bounce">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-white/10 backdrop-blur-sm rounded-full border-4 border-white/20 shadow-xl">
-                <span className="text-6xl">🚑</span>
-              </div>
+      <div className="min-h-[calc(100vh-200px)] grid lg:grid-cols-2 gap-8 items-center">
+        {/* Left Side - Hero Content */}
+        <div className="space-y-8">
+          {/* Hero Section */}
+          <div>
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mb-6 shadow-xl">
+              <span className="text-5xl">🚑</span>
             </div>
-
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               AMB Check System
             </h1>
-            <div className="text-xl md:text-2xl text-blue-100 mb-2">
+            <p className="text-xl text-gray-600 mb-2">
               ระบบตรวจสอบความพร้อมรถพยาบาล
-            </div>
-            <div className="text-lg md:text-xl text-blue-200 mb-8">
+            </p>
+            <p className="text-lg text-gray-500 mb-6">
               Ambulance Inspection & Management System
-            </div>
-
-            <div className="inline-flex flex-col sm:flex-row gap-4 items-center">
-              <button
-                onClick={() => router.push('/login')}
-                className="group relative px-8 py-4 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 inline-flex items-center gap-3"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
-                <span>เข้าสู่ระบบ / Login</span>
-                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="mt-8 text-sm text-blue-200">
-              <p>Bangkok Siriroj Hospital</p>
+            </p>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span>Bangkok Siriroj Hospital</span>
             </div>
           </div>
-        </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 hover:shadow-xl transition-shadow">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-2xl mb-4 shadow-lg">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Features */}
+          <div className="grid gap-4">
+            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">ตรวจสอบอย่างเป็นระบบ</h3>
-              <p className="text-gray-600 text-sm">Systematic Inspection</p>
-              <p className="text-gray-700 mt-2 text-sm">
-                ระบบ Checklist ครบถ้วนทุกขั้นตอน
-              </p>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">ตรวจสอบอย่างเป็นระบบ</h3>
+                <p className="text-sm text-gray-600">Systematic Inspection - ระบบ Checklist ครบถ้วนทุกขั้นตอน</p>
+              </div>
             </div>
-          </div>
 
-          <div className="card bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 hover:shadow-xl transition-shadow">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 text-white rounded-2xl mb-4 shadow-lg">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-4 p-4 bg-green-50 rounded-xl border border-green-100">
+              <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">QR Code Scanning</h3>
-              <p className="text-gray-600 text-sm">สแกนง่าย รวดเร็ว</p>
-              <p className="text-gray-700 mt-2 text-sm">
-                เข้าถึงข้อมูลรถได้ทันที
-              </p>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">QR Code Scanning</h3>
+                <p className="text-sm text-gray-600">สแกนง่าย รวดเร็ว - เข้าถึงข้อมูลรถได้ทันที</p>
+              </div>
             </div>
-          </div>
 
-          <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 hover:shadow-xl transition-shadow">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600 text-white rounded-2xl mb-4 shadow-lg">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
+              <div className="flex-shrink-0 w-12 h-12 bg-purple-600 text-white rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">รายงานแบบ Real-time</h3>
-              <p className="text-gray-600 text-sm">Real-time Reporting</p>
-              <p className="text-gray-700 mt-2 text-sm">
-                ติดตามสถานะได้ทุกเมื่อ
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">รายงานแบบ Real-time</h3>
+                <p className="text-sm text-gray-600">Real-time Reporting - ติดตามสถานะได้ทุกเมื่อ</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="text-2xl font-bold text-blue-600">4</div>
+              <div className="text-xs text-gray-600">Roles</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
+              <div className="text-2xl font-bold text-green-600">100%</div>
+              <div className="text-xs text-gray-600">Digital</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+              <div className="text-2xl font-bold text-purple-600">24/7</div>
+              <div className="text-xs text-gray-600">Available</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+              <div className="text-2xl font-bold text-orange-600">RT</div>
+              <div className="text-xs text-gray-600">Real-time</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side - Login Form */}
+        <div className="lg:pl-8">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+            {/* Login Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">เข้าสู่ระบบ</h2>
+              <p className="text-gray-600">Login to continue</p>
+            </div>
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  อีเมล / Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="example@hospital.com"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  รหัสผ่าน / Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+              >
+                {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+              </button>
+            </form>
+
+            {/* Test Accounts */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-xs font-medium text-gray-700 mb-3 text-center">
+                บัญชีทดสอบ / Test Accounts
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-blue-50 px-3 py-2 rounded-lg">
+                  <div className="font-medium text-gray-800">🚗 Driver</div>
+                  <div className="text-gray-600">driver@hospital.com</div>
+                </div>
+                <div className="bg-green-50 px-3 py-2 rounded-lg">
+                  <div className="font-medium text-gray-800">🔧 Equipment</div>
+                  <div className="text-gray-600">equipment@hospital.com</div>
+                </div>
+                <div className="bg-purple-50 px-3 py-2 rounded-lg">
+                  <div className="font-medium text-gray-800">💉 Nurse</div>
+                  <div className="text-gray-600">nurse@hospital.com</div>
+                </div>
+                <div className="bg-orange-50 px-3 py-2 rounded-lg">
+                  <div className="font-medium text-gray-800">👨‍💼 HOD</div>
+                  <div className="text-gray-600">hod@hospital.com</div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                รหัสผ่านทั้งหมด: <span className="font-mono font-medium">password123</span>
               </p>
             </div>
           </div>
-        </div>
-
-        {/* How it Works */}
-        <div className="card bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 mb-12">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">ขั้นตอนการใช้งาน</h2>
-            <p className="text-gray-600">How It Works</p>
-          </div>
-
-          <div className="grid md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full mb-3 font-bold text-xl shadow-lg">1</div>
-              <h4 className="font-bold text-gray-800 mb-1">เข้าสู่ระบบ</h4>
-              <p className="text-sm text-gray-600">Login</p>
-            </div>
-
-            <div className="hidden md:flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full mb-3 font-bold text-xl shadow-lg">2</div>
-              <h4 className="font-bold text-gray-800 mb-1">สแกน QR Code</h4>
-              <p className="text-sm text-gray-600">Scan QR</p>
-            </div>
-
-            <div className="hidden md:flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full mb-3 font-bold text-xl shadow-lg">3</div>
-              <h4 className="font-bold text-gray-800 mb-1">ตรวจสอบ</h4>
-              <p className="text-sm text-gray-600">Inspect</p>
-            </div>
-
-            <div className="hidden md:flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full mb-3 font-bold text-xl shadow-lg">4</div>
-              <h4 className="font-bold text-gray-800 mb-1">บันทึกผล</h4>
-              <p className="text-sm text-gray-600">Save Results</p>
-            </div>
-
-            <div className="hidden md:flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-green-600 text-white rounded-full mb-3 font-bold text-xl shadow-lg">5</div>
-              <h4 className="font-bold text-gray-800 mb-1">HOD อนุมัติ</h4>
-              <p className="text-sm text-gray-600">HOD Approval</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <div className="card text-center bg-blue-50 border-2 border-blue-200">
-            <div className="text-4xl font-bold text-blue-600 mb-1">4</div>
-            <div className="text-sm text-gray-600">Role Types</div>
-          </div>
-          <div className="card text-center bg-green-50 border-2 border-green-200">
-            <div className="text-4xl font-bold text-green-600 mb-1">100%</div>
-            <div className="text-sm text-gray-600">Digital Process</div>
-          </div>
-          <div className="card text-center bg-purple-50 border-2 border-purple-200">
-            <div className="text-4xl font-bold text-purple-600 mb-1">24/7</div>
-            <div className="text-sm text-gray-600">Availability</div>
-          </div>
-          <div className="card text-center bg-orange-50 border-2 border-orange-200">
-            <div className="text-4xl font-bold text-orange-600 mb-1">Real-time</div>
-            <div className="text-sm text-gray-600">Monitoring</div>
-          </div>
-        </div>
-
-        {/* Contact/Support */}
-        <div className="card bg-gradient-to-r from-blue-600 to-blue-800 text-white text-center">
-          <div className="text-2xl font-bold mb-2">พร้อมเริ่มต้นใช้งาน?</div>
-          <p className="text-blue-100 mb-6">Ready to get started?</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-white text-blue-700 px-8 py-3 rounded-xl font-bold hover:bg-blue-50 transform hover:-translate-y-1 transition-all duration-200 shadow-xl inline-flex items-center gap-2"
-          >
-            <span>เข้าสู่ระบบตอนนี้</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
     );
