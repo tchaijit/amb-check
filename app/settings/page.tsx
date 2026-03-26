@@ -1,12 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  // Redirect HOD to admin page
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (session?.user?.role === 'hod') {
+      router.push('/admin');
+    } else if (session?.user?.role) {
+      // Other roles should go back to home (no settings page for them)
+      router.push('/');
+    }
+  }, [session, status, router]);
   const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'password'>('profile');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');

@@ -10,6 +10,7 @@ const protectedRoutes = {
   '/history': ['hod'],
   '/statistics': ['hod'],
   '/qr-generator': ['hod', 'equipment_officer'],
+  '/admin': ['hod'], // Admin panel for HOD only
 };
 
 export default auth((req) => {

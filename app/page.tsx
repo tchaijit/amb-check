@@ -111,12 +111,14 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => router.push('/settings')}
-              className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-30 transition-colors inline-flex items-center gap-2"
-            >
-              ⚙️ <span className="hidden sm:inline">ตั้งค่า / Settings</span>
-            </button>
+            {userRole === 'hod' && (
+              <button
+                onClick={() => router.push('/admin')}
+                className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-30 transition-colors inline-flex items-center gap-2"
+              >
+                ⚙️ <span className="hidden sm:inline">จัดการระบบ / Admin</span>
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
@@ -185,6 +187,27 @@ export default function HomePage() {
                   <h2 className="text-xl font-bold mb-1">QR Code</h2>
                   <p className="text-gray-600 text-sm">
                     สร้าง QR Code สำหรับรถพยาบาล / Generate QR Codes for ambulances
+                  </p>
+                </div>
+                <div className="text-gray-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => router.push('/admin')}
+              className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="bg-gray-700 text-white p-4 rounded-lg text-4xl">
+                  ⚙️
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold mb-1">จัดการระบบ / Admin</h2>
+                  <p className="text-gray-600 text-sm">
+                    จัดการผู้ใช้งานและรถพยาบาล / Manage users and vehicles
                   </p>
                 </div>
                 <div className="text-gray-400">
