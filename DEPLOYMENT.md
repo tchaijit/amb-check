@@ -148,4 +148,4 @@ For issues, contact the development team or create an issue on GitHub.
 
 ---
 
-Built with ❤️ for Bangkok Hospital
+Built with ❤️ for Bangkok Siriroj Hospital

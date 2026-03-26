@@ -1,6 +1,6 @@
 # AMB Check - ระบบตรวจสอบรถพยาบาล
 
-## Ambulance Inspection System for Bangkok Hospital
+## Ambulance Inspection System for Bangkok Siriroj Hospital
 
 ระบบตรวจสอบความพร้อมรถพยาบาลแบบครบวงจร พร้อมระบบ QR Code, การอนุมัติหลายขั้นตอน และรายงานสถิติ
 

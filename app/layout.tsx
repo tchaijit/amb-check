@@ -4,7 +4,7 @@ import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
   title: "AMB Check - ระบบตรวจสอบรถพยาบาล / Ambulance Inspection System",
-  description: "ระบบตรวจสอบความพร้อมใช้รถพยาบาล Bangkok Hospital",
+  description: "ระบบตรวจสอบความพร้อมใช้รถพยาบาล Bangkok Siriroj Hospital",
   manifest: "/manifest.json",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
@@ -31,7 +31,7 @@ export default function RootLayout({
             </main>
 
             <footer className="bg-gray-800 text-white text-center py-4">
-              <p className="text-sm">Bangkok Hospital - Ambulance Check System</p>
+              <p className="text-sm">Bangkok Siriroj Hospital - Ambulance Check System</p>
             </footer>
           </div>
         </SessionProvider>

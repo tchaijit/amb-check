@@ -29,7 +29,7 @@ export async function exportInspectionToPDF(inspection: InspectionData) {
     container.innerHTML = `
       <div style="padding: 20px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="font-size: 24px; margin-bottom: 5px;">Bangkok Hospital</h1>
+          <h1 style="font-size: 24px; margin-bottom: 5px;">Bangkok Siriroj Hospital</h1>
           <h2 style="font-size: 20px; margin-bottom: 10px;">รายงานการตรวจสอบรถพยาบาล</h2>
           <h3 style="font-size: 16px; color: #666;">Ambulance Inspection Report</h3>
         </div>
@@ -103,7 +103,7 @@ export async function exportInspectionToPDF(inspection: InspectionData) {
 
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #666; font-size: 12px;">
           <p>Generated on ${new Date().toLocaleString('th-TH')}</p>
-          <p>Bangkok Hospital - Ambulance Inspection System</p>
+          <p>Bangkok Siriroj Hospital - Ambulance Inspection System</p>
         </div>
       </div>
     `;
