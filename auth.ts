@@ -4,34 +4,35 @@ import bcrypt from 'bcryptjs';
 import { getUserByEmail } from './lib/db';
 
 // Mock users for testing (when database is not available)
+// All passwords are 'password123' (pre-hashed for better performance)
 const MOCK_USERS = [
   {
     id: 1,
     email: 'driver@hospital.com',
     name: 'John Driver',
     role: 'driver',
-    passwordHash: bcrypt.hashSync('password123', 10),
+    passwordHash: '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC',
   },
   {
     id: 2,
     email: 'equipment@hospital.com',
     name: 'Jane Equipment',
     role: 'equipment_officer',
-    passwordHash: bcrypt.hashSync('password123', 10),
+    passwordHash: '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC',
   },
   {
     id: 3,
     email: 'nurse@hospital.com',
     name: 'Mary Nurse',
     role: 'nurse',
-    passwordHash: bcrypt.hashSync('password123', 10),
+    passwordHash: '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC',
   },
   {
     id: 4,
     email: 'hod@hospital.com',
     name: 'Dr. Smith HOD',
     role: 'hod',
-    passwordHash: bcrypt.hashSync('password123', 10),
+    passwordHash: '$2b$10$K3ebqTbYMLcHYLBmO4mAxemSNiIm2SsCqzaXRJDFRz4/Og.WaRSaC',
   },
 ];
 
