@@ -40,6 +40,7 @@ export default function RootLayout({
 
             <footer className="bg-gray-800 text-white text-center py-4">
               <p className="text-sm">Bangkok Siriroj Hospital - Ambulance Check System</p>
+              <p className="text-xs text-gray-400 mt-1">Developed by BSI Informatics Dev Team © 2026</p>
             </footer>
           </div>
         </SessionProvider>
