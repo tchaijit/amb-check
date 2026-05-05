@@ -13,6 +13,11 @@ export async function POST() {
   if (response) return response;
 
   try {
+    // inspected_at is TIMESTAMP (no tz) but written via CURRENT_TIMESTAMP on a UTC
+    // server, so the literal value is UTC wall-clock. To get the Bangkok calendar
+    // date, add +7h and cast to date. (Avoid `AT TIME ZONE 'Asia/Bangkok'` — for a
+    // TIMESTAMP it INTERPRETS the value as Bangkok local and converts to UTC, the
+    // opposite of what we want.)
     const candidates = await query<{
       id: number;
       ambulance_id: number;
@@ -22,12 +27,12 @@ export async function POST() {
       `SELECT
          i.id,
          i.ambulance_id,
-         i.inspection_date::text                                               AS current_date,
-         (MIN(it.inspected_at) AT TIME ZONE 'Asia/Bangkok')::date::text        AS target_date
+         i.inspection_date::text                                  AS current_date,
+         (MIN(it.inspected_at) + INTERVAL '7 hours')::date::text  AS target_date
        FROM inspections i
        JOIN inspection_items it ON it.inspection_id = i.id
        GROUP BY i.id, i.ambulance_id, i.inspection_date
-       HAVING (MIN(it.inspected_at) AT TIME ZONE 'Asia/Bangkok')::date <> i.inspection_date`
+       HAVING (MIN(it.inspected_at) + INTERVAL '7 hours')::date <> i.inspection_date`
     );
 
     const updates: Array<{ id: number; from: string; to: string }> = [];
