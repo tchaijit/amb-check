@@ -337,7 +337,7 @@ function VehicleCard({ item, onClick }: { item: AmbulanceStatusItem; onClick: ()
       </div>
 
       {/* Progress indicators */}
-      <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+      <div className="grid grid-cols-3 gap-2 text-sm">
         <ProgressDot done={!!ins?.driverCompleted} label="ยานพาหนะ" />
         <ProgressDot done={!!ins?.equipmentOfficerCompleted} label="เจ้าหน้าที่เคลื่อนย้าย" />
         <ProgressDot done={!!ins?.nurseCompleted} label="พยาบาล" />
@@ -363,8 +363,8 @@ function VehicleCard({ item, onClick }: { item: AmbulanceStatusItem; onClick: ()
 
 function ProgressDot({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className={`flex items-center gap-1 px-2 py-1 rounded ${done ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
-      <span>{done ? '✓' : '○'}</span>
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium ${done ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
+      <span className="text-base leading-none">{done ? '✓' : '○'}</span>
       <span className="truncate">{label}</span>
     </div>
   );
