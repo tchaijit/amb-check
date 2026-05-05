@@ -1,4 +1,5 @@
 import { query } from './pg-pool';
+import { todayBangkok } from './dates';
 import type { Ambulance, Inspection, InspectionItem, User } from './types';
 
 function toCamelCase(obj: any): any {
@@ -55,6 +56,51 @@ export async function getInspectionsByDate(date: string): Promise<Inspection[]> 
   return toCamelCase(rows);
 }
 
+export async function getInspectionsByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<Inspection[]> {
+  const { rows } = await query(
+    `SELECT i.*, a.vehicle_number, a.license_plate
+     FROM inspections i
+     JOIN ambulances a ON i.ambulance_id = a.id
+     WHERE i.inspection_date BETWEEN $1 AND $2
+     ORDER BY i.inspection_date DESC, i.created_at DESC`,
+    [startDate, endDate]
+  );
+  return toCamelCase(rows);
+}
+
+export interface RoleInspectionMeta {
+  inspectionId: number;
+  inspectorRole: 'driver' | 'equipment_officer' | 'nurse';
+  lastAt: string | null;
+  userId: number | null;
+  userName: string | null;
+}
+
+export async function getRoleMetaForInspections(
+  inspectionIds: number[]
+): Promise<RoleInspectionMeta[]> {
+  if (inspectionIds.length === 0) return [];
+  const { rows } = await query(
+    `SELECT DISTINCT ON (it.inspection_id, it.inspector_role)
+       it.inspection_id,
+       it.inspector_role,
+       COALESCE(it.last_edited_at, it.inspected_at) AS last_at,
+       u.id AS user_id,
+       u.name AS user_name
+     FROM inspection_items it
+     LEFT JOIN users u
+       ON u.id = COALESCE(it.last_edited_by, it.inspected_by)
+     WHERE it.inspection_id = ANY($1::int[])
+     ORDER BY it.inspection_id, it.inspector_role,
+              COALESCE(it.last_edited_at, it.inspected_at) DESC NULLS LAST`,
+    [inspectionIds]
+  );
+  return toCamelCase(rows);
+}
+
 export async function getInspectionById(id: number): Promise<Inspection | null> {
   const { rows } = await query(
     `SELECT i.*, a.vehicle_number, a.license_plate
@@ -68,7 +114,7 @@ export async function getInspectionById(id: number): Promise<Inspection | null> 
 }
 
 export async function getTodayInspectionByAmbulance(ambulanceId: number): Promise<Inspection | null> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayBangkok();
   const { rows } = await query(
     `SELECT * FROM inspections
      WHERE ambulance_id = $1 AND inspection_date = $2
@@ -79,7 +125,7 @@ export async function getTodayInspectionByAmbulance(ambulanceId: number): Promis
 }
 
 export async function createInspection(ambulanceId: number): Promise<Inspection> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayBangkok();
   const { rows } = await query(
     `INSERT INTO inspections (ambulance_id, inspection_date)
      VALUES ($1, $2)

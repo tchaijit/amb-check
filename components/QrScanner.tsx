@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 
 interface QrScannerProps {
   onScanSuccess: (decodedText: string) => void;
@@ -10,54 +10,53 @@ interface QrScannerProps {
 
 export default function QrScanner({ onScanSuccess, onScanError }: QrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isScanning = useRef(false);
+  const onScanSuccessRef = useRef(onScanSuccess);
+  const onScanErrorRef = useRef(onScanError);
 
   useEffect(() => {
-    const startScanner = async () => {
-      if (isScanning.current) return;
+    onScanSuccessRef.current = onScanSuccess;
+    onScanErrorRef.current = onScanError;
+  }, [onScanSuccess, onScanError]);
 
-      try {
-        const scanner = new Html5Qrcode('qr-reader');
-        scannerRef.current = scanner;
+  useEffect(() => {
+    let cancelled = false;
+    const scanner = new Html5Qrcode('qr-reader');
+    scannerRef.current = scanner;
 
-        await scanner.start(
-          { facingMode: 'environment' }, // Use back camera
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            onScanSuccess(decodedText);
-          },
-          (errorMessage) => {
-            // Ignore continuous scan errors
-            console.log('Scan error:', errorMessage);
-          }
-        );
-
-        isScanning.current = true;
-      } catch (error: any) {
-        console.error('Failed to start scanner:', error);
-        if (onScanError) {
-          onScanError(error.message || 'ไม่สามารถเปิดกล้องได้ / Cannot access camera');
+    scanner
+      .start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => onScanSuccessRef.current(decodedText),
+        () => {
+          // Ignore continuous scan errors
         }
-      }
-    };
-
-    startScanner();
+      )
+      .then(() => {
+        if (cancelled) {
+          // Component unmounted before start finished — stop now.
+          scanner.stop().then(() => scanner.clear()).catch(() => {});
+        }
+      })
+      .catch((error: any) => {
+        // Ignore aborts from React Strict Mode remount or component unmount.
+        const name = error?.name || '';
+        const msg = String(error?.message || error || '');
+        const isAbort =
+          cancelled || name === 'AbortError' || /abort/i.test(msg);
+        if (isAbort) return;
+        console.error('Failed to start scanner:', error);
+        onScanErrorRef.current?.(msg || 'ไม่สามารถเปิดกล้องได้ / Cannot access camera');
+      });
 
     return () => {
-      if (scannerRef.current && isScanning.current) {
-        scannerRef.current
-          .stop()
-          .then(() => {
-            scannerRef.current?.clear();
-            isScanning.current = false;
-          })
-          .catch((err) => console.error('Failed to stop scanner:', err));
+      cancelled = true;
+      if (scanner.getState() === Html5QrcodeScannerState.SCANNING) {
+        scanner.stop().then(() => scanner.clear()).catch(() => {});
       }
+      // If not yet SCANNING, the .then() above will handle stop after start resolves.
     };
-  }, [onScanSuccess, onScanError]);
+  }, []);
 
   return (
     <div className="space-y-4">

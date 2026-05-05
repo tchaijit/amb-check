@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { exportInspectionToPDF, exportMultipleInspectionsToPDF } from '@/lib/pdf-export';
 import { INSPECTION_CHECKLIST } from '@/lib/checklist-data';
+import { todayBangkok } from '@/lib/dates';
 
 const STATUS_OPTIONS: Array<{ code: 'ready' | 'monitor' | 'not_ready'; label: string; cls: string }> = [
   { code: 'ready', label: '✅ พร้อมใช้ / Ready', cls: 'border-green-500 bg-green-50 text-green-700' },
@@ -13,7 +14,7 @@ const STATUS_OPTIONS: Array<{ code: 'ready' | 'monitor' | 'not_ready'; label: st
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayBangkok());
   const [inspections, setInspections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);

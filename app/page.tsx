@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { INSPECTION_CHECKLIST } from '@/lib/checklist-data';
+import { todayBangkok } from '@/lib/dates';
 
 type StatusCode = 'no_data' | 'in_progress' | 'pending_approval' | 'ready' | 'monitor' | 'not_ready';
 
@@ -26,6 +27,7 @@ interface AmbulanceStatusItem {
     equipmentOfficerCompleted: boolean;
     nurseCompleted: boolean;
     hodApproved: boolean;
+    hodApprovedAt?: string | null;
     overallStatus?: string;
     remarks?: string;
     items?: Array<{
@@ -52,7 +54,7 @@ export default function HomePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayBangkok();
   const [selectedDate, setSelectedDate] = useState(today);
   const [items, setItems] = useState<AmbulanceStatusItem[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -266,6 +268,21 @@ export default function HomePage() {
           userRole={(session?.user?.role as string) || ''}
           starting={startingInspection}
           onClose={() => setSelectedItem(null)}
+          onApprove={async (overallStatus) => {
+            const insId = selectedItem.inspection?.id;
+            if (!insId) return;
+            const res = await fetch(`/api/inspections/${insId}/approve`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ overallStatus }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.error || 'อนุมัติไม่สำเร็จ');
+            }
+            await fetchStatus(selectedDate);
+            setSelectedItem(null);
+          }}
           onStart={() => {
             const id = selectedItem.ambulance.id;
             setSelectedItem(null);
@@ -562,6 +579,12 @@ function NavButton({
   );
 }
 
+const HOD_STATUS_OPTIONS: Array<{ code: 'ready' | 'monitor' | 'not_ready'; label: string; cls: string }> = [
+  { code: 'ready', label: '✅ พร้อมใช้', cls: 'border-green-500 bg-green-50 text-green-700' },
+  { code: 'monitor', label: '⚠️ เฝ้าระวัง', cls: 'border-orange-500 bg-orange-50 text-orange-700' },
+  { code: 'not_ready', label: '⛔ ไม่พร้อมใช้', cls: 'border-red-500 bg-red-50 text-red-700' },
+];
+
 function InspectionModal({
   item,
   isLoggedIn,
@@ -569,6 +592,7 @@ function InspectionModal({
   starting,
   onClose,
   onStart,
+  onApprove,
   onSectionStart,
 }: {
   item: AmbulanceStatusItem;
@@ -577,8 +601,12 @@ function InspectionModal({
   starting: boolean;
   onClose: () => void;
   onStart: () => void;
+  onApprove: (overallStatus: 'ready' | 'monitor' | 'not_ready') => Promise<void>;
   onSectionStart: (role: 'driver' | 'equipment_officer' | 'nurse') => void;
 }) {
+  const [pendingStatus, setPendingStatus] = useState<'ready' | 'monitor' | 'not_ready' | ''>('');
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState('');
   const s = STATUS_STYLES[item.status.code];
   const ins = item.inspection;
 
@@ -610,11 +638,32 @@ function InspectionModal({
   };
 
   const isHod = userRole === 'hod';
+  const allCompleted =
+    !!ins?.driverCompleted && !!ins?.equipmentOfficerCompleted && !!ins?.nurseCompleted;
+  const alreadyApproved = !!ins?.hodApproved;
+  const showHodApprove = isHod && allCompleted && !alreadyApproved;
+
   const ctaLabel = !isLoggedIn
     ? 'เข้าสู่ระบบเพื่อตรวจ / Login to Inspect'
     : isHod
-    ? 'ไปที่แดชบอร์ด / Go to Dashboard'
+    ? alreadyApproved
+      ? 'อนุมัติแล้ว / Approved'
+      : !allCompleted
+      ? 'รอการตรวจครบ 3 ฝ่าย / Awaiting all sections'
+      : 'อนุมัติ / Approve'
     : 'ไปตรวจ / Start Inspection';
+
+  const handleApproveClick = async () => {
+    if (!pendingStatus) return;
+    setApproveError('');
+    setApproving(true);
+    try {
+      await onApprove(pendingStatus);
+    } catch (err: any) {
+      setApproveError(err?.message || 'อนุมัติไม่สำเร็จ');
+      setApproving(false);
+    }
+  };
 
   return (
     <div
@@ -741,9 +790,50 @@ function InspectionModal({
               ℹ️ กรุณาเข้าสู่ระบบเพื่อเริ่มตรวจสอบ — ระบบจะใช้รหัสที่ login เป็นรหัสผู้ตรวจสอบโดยอัตโนมัติ
             </div>
           )}
-          {isLoggedIn && isHod && (
+
+          {/* HOD: status picker before approval */}
+          {showHodApprove && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+              <div className="text-sm font-semibold text-blue-900">
+                ระบุสถานะรถพยาบาลก่อนอนุมัติ / Select status before approving
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {HOD_STATUS_OPTIONS.map((opt) => {
+                  const selected = pendingStatus === opt.code;
+                  return (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => setPendingStatus(opt.code)}
+                      className={`text-xs sm:text-sm px-3 py-2 rounded-lg border-2 font-medium transition-all ${
+                        selected
+                          ? `${opt.cls} ring-2 ring-offset-1`
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {approveError && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                  {approveError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {isLoggedIn && isHod && !allCompleted && (
             <div className="text-xs bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3">
-              ℹ️ HOD ไม่ได้เป็นผู้ตรวจสอบ ระบบจะนำท่านไปยังแดชบอร์ดเพื่ออนุมัติ
+              ⏳ ตรวจยังไม่ครบ 3 ฝ่าย — รออนุมัติเมื่อทุกฝ่ายตรวจเสร็จ
+            </div>
+          )}
+          {isLoggedIn && isHod && alreadyApproved && (
+            <div className="text-xs bg-green-50 border border-green-200 text-green-800 rounded-lg p-3">
+              ✓ HOD อนุมัติแล้ว
+              {ins?.hodApprovedAt &&
+                ` · ${new Date(ins.hodApprovedAt).toLocaleString('th-TH')}`}
             </div>
           )}
         </div>
@@ -757,11 +847,16 @@ function InspectionModal({
             ปิด
           </button>
           <button
-            onClick={onStart}
-            disabled={starting}
-            className="flex-1 px-4 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-semibold shadow"
+            onClick={showHodApprove ? handleApproveClick : onStart}
+            disabled={
+              starting ||
+              approving ||
+              (showHodApprove && !pendingStatus) ||
+              (isHod && (alreadyApproved || !allCompleted))
+            }
+            className="flex-1 px-4 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold shadow"
           >
-            {starting ? 'กำลังเริ่ม...' : ctaLabel}
+            {approving ? 'กำลังอนุมัติ...' : starting ? 'กำลังเริ่ม...' : ctaLabel}
           </button>
         </div>
       </div>

@@ -59,8 +59,19 @@ export default function InspectPage() {
             if (tank2Match) processedItem.tank2 = tank2Match[1] !== '-' ? tank2Match[1] : '';
           }
 
-          // Parse multi-inputs/extra-inputs from "label: value; label: value" format
-          const checkDef = INSPECTION_CHECKLIST.find((c) => c.code === item.itemCode);
+          // Parse gauge level from "Gauge: <n> [PSI|%]" prefix
+          if (item.value && typeof item.value === 'string') {
+            const gaugeMatch = item.value.match(/Gauge:\s*(\d+)/);
+            if (gaugeMatch) {
+              processedItem.gaugeLevel = parseInt(gaugeMatch[1], 10);
+            }
+          }
+
+          // Parse multi-inputs/extra-inputs from "label: value; label: value" format.
+          // Match by BOTH code and inspectorRole — codes are reused across roles.
+          const checkDef = INSPECTION_CHECKLIST.find(
+            (c) => c.code === item.itemCode && c.inspectorRole === item.inspectorRole
+          );
           const allInputs = [
             ...(checkDef?.multiInputs || []),
             ...(checkDef?.extraInputs || []),
@@ -242,6 +253,12 @@ export default function InspectPage() {
 
         // Handle dual tanks
         let value = items[checkItem.code]?.value || null;
+        if (checkItem.hasGauge) {
+          const lvl = items[checkItem.code]?.gaugeLevel;
+          if (lvl !== undefined && lvl !== null) {
+            value = `Gauge: ${lvl}${checkItem.psiConfig ? ' PSI' : '%'}`;
+          }
+        }
         if (checkItem.dualTanks && (items[checkItem.code]?.tank1 || items[checkItem.code]?.tank2)) {
           value = `Tank1: ${items[checkItem.code]?.tank1 || '-'} PSI, Tank2: ${items[checkItem.code]?.tank2 || '-'} PSI`;
         }

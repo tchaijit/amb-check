@@ -1,6 +1,8 @@
 // Shared in-memory mock store used when the database is unavailable.
 // Module singleton so all route handlers share the same data within a process.
 
+import { todayBangkok } from './dates';
+
 declare global {
   // eslint-disable-next-line no-var
   var __ambMockStore: AmbMockStore | undefined;
@@ -48,7 +50,7 @@ export function getMockInspectionsByDate(date: string): MockInspection[] {
 }
 
 export function getMockTodayInspection(ambulanceId: number): MockInspection | null {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayBangkok();
   for (const ins of mockStore.inspections.values()) {
     if (ins.ambulanceId === ambulanceId && ins.inspectionDate === today) {
       return ins;
@@ -58,7 +60,7 @@ export function getMockTodayInspection(ambulanceId: number): MockInspection | nu
 }
 
 export function createMockInspection(ambulanceId: number, ambulanceMeta?: { vehicleNumber?: string; licensePlate?: string }): MockInspection {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayBangkok();
   const id = mockStore.nextId++;
   const inspection: MockInspection = {
     id,

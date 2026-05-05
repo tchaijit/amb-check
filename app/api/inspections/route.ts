@@ -5,6 +5,7 @@ import {
   getMockTodayInspection,
   createMockInspection,
 } from '@/lib/mock-store';
+import { todayBangkok } from '@/lib/dates';
 
 // Lookup ambulance metadata from the static mock list (kept in sync with public/ambulance-status route)
 const MOCK_AMBULANCES_META: Record<number, { vehicleNumber: string; licensePlate: string }> = {
@@ -16,7 +17,7 @@ const MOCK_AMBULANCES_META: Record<number, { vehicleNumber: string; licensePlate
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const date = searchParams.get('date') || todayBangkok();
 
     let inspections = [];
 

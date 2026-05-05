@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAmbulances, getInspectionsByDate, getInspectionItems } from '@/lib/db';
 import { getMockInspectionsByDate, getMockItems } from '@/lib/mock-store';
+import { todayBangkok } from '@/lib/dates';
 
 const MOCK_AMBULANCES = [
   { id: 1, vehicleNumber: 'AMB-001', qrCode: 'AMB-001', licensePlate: 'BKK-1234', status: 'active' },
@@ -38,7 +39,7 @@ function deriveStatus(inspection: any) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const date = searchParams.get('date') || todayBangkok();
 
     let ambulances: any[] = [];
     let inspections: any[] = [];

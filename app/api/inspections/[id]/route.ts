@@ -12,6 +12,7 @@ import {
   getMockItems,
   setMockItems,
 } from '@/lib/mock-store';
+import { todayBangkok } from '@/lib/dates';
 
 export async function GET(
   request: NextRequest,
@@ -96,7 +97,7 @@ export async function PUT(
         inspection = {
           id,
           ambulanceId: 1,
-          inspectionDate: new Date().toISOString().split('T')[0],
+          inspectionDate: todayBangkok(),
           overallStatus: null,
           driverCompleted: false,
           equipmentOfficerCompleted: false,

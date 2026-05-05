@@ -18,17 +18,43 @@ export default function ScannerPage() {
     setLoading(true);
 
     try {
-      // Mock: Direct to inspection page with ID
-      // In production, this would call API to check/create inspection
-      // const response = await fetch(`/api/ambulances/${code}`);
-
-      // For demo: assume code is like "AMB-001"
-      if (code.startsWith('AMB-')) {
-        const inspectionId = Math.floor(Math.random() * 1000) + 1;
-        router.push(`/inspect/${inspectionId}`);
-      } else {
-        throw new Error('รูปแบบ QR Code ไม่ถูกต้อง / Invalid QR Code format');
+      const trimmed = code.trim();
+      if (!trimmed) {
+        throw new Error('กรุณากรอก QR Code / Please enter QR Code');
       }
+
+      // 1) Look up ambulance by QR code; fetch today's inspection if any.
+      const ambRes = await fetch(`/api/ambulances/${encodeURIComponent(trimmed)}`);
+      if (!ambRes.ok) {
+        if (ambRes.status === 404) {
+          throw new Error('ไม่พบรถพยาบาลนี้ / Ambulance not found');
+        }
+        throw new Error('ไม่สามารถค้นหารถพยาบาลได้ / Failed to look up ambulance');
+      }
+      const { ambulance, todayInspection } = await ambRes.json();
+
+      // 2) Reuse today's inspection if it exists.
+      let inspectionId: number | undefined = todayInspection?.id;
+
+      // 3) Otherwise create one (server-side dedupes by ambulance + date).
+      if (!inspectionId) {
+        const createRes = await fetch('/api/inspections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ambulanceId: ambulance.id }),
+        });
+        if (!createRes.ok) {
+          throw new Error('ไม่สามารถเริ่มการตรวจสอบได้ / Failed to create inspection');
+        }
+        const { inspection } = await createRes.json();
+        inspectionId = inspection?.id;
+      }
+
+      if (!inspectionId) {
+        throw new Error('ไม่ได้รับ inspection id / Missing inspection id');
+      }
+
+      router.push(`/inspect/${inspectionId}`);
     } catch (err: any) {
       setError(err.message || 'เกิดข้อผิดพลาด / An error occurred');
       setLoading(false);

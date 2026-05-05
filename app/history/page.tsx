@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { exportInspectionToPDF } from '@/lib/pdf-export';
+import { todayBangkok } from '@/lib/dates';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function HistoryPage() {
 
   // Filters
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(todayBangkok());
   const [vehicleFilter, setVehicleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -23,90 +24,38 @@ export default function HistoryPage() {
     // Set default start date to 30 days ago
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
-
-    fetchHistory();
+    const start = thirtyDaysAgo.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    setStartDate(start);
+    fetchHistory(start, endDate);
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [inspections, startDate, endDate, vehicleFilter, statusFilter]);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (start?: string, end?: string) => {
+    const s = start ?? startDate;
+    const e = end ?? endDate;
+    if (!s) return;
     setLoading(true);
     try {
-      // TODO: Connect to real API
-      // const response = await fetch(`/api/inspections/history?start=${startDate}&end=${endDate}`);
-      // const data = await response.json();
-      // setInspections(data.inspections);
-
-      // Mock data for demonstration
-      const mockHistory = [
-        {
-          id: 1,
-          vehicleNumber: 'AMB-001',
-          inspectionDate: '2026-03-25',
-          driverCompleted: true,
-          equipmentOfficerCompleted: true,
-          nurseCompleted: true,
-          overallStatus: 'ready',
-          hodApproved: true,
-          hodApprovedAt: '2026-03-25T10:30:00',
-          remarks: null,
-        },
-        {
-          id: 2,
-          vehicleNumber: 'AMB-002',
-          inspectionDate: '2026-03-25',
-          driverCompleted: true,
-          equipmentOfficerCompleted: true,
-          nurseCompleted: true,
-          overallStatus: 'monitor',
-          hodApproved: true,
-          hodApprovedAt: '2026-03-25T11:00:00',
-          remarks: 'พบรายการผิดปกติบางข้อ แต่แก้ไขแล้ว',
-        },
-        {
-          id: 3,
-          vehicleNumber: 'AMB-001',
-          inspectionDate: '2026-03-24',
-          driverCompleted: true,
-          equipmentOfficerCompleted: true,
-          nurseCompleted: true,
-          overallStatus: 'ready',
-          hodApproved: true,
-          hodApprovedAt: '2026-03-24T09:15:00',
-          remarks: null,
-        },
-        {
-          id: 4,
-          vehicleNumber: 'AMB-003',
-          inspectionDate: '2026-03-24',
-          driverCompleted: true,
-          equipmentOfficerCompleted: true,
-          nurseCompleted: true,
-          overallStatus: 'ready',
-          hodApproved: true,
-          hodApprovedAt: '2026-03-24T09:45:00',
-          remarks: null,
-        },
-        {
-          id: 5,
-          vehicleNumber: 'AMB-002',
-          inspectionDate: '2026-03-23',
-          driverCompleted: true,
-          equipmentOfficerCompleted: true,
-          nurseCompleted: true,
-          overallStatus: 'not_ready',
-          hodApproved: false,
-          hodApprovedAt: null,
-          remarks: 'พบปัญหาเครื่องยนต์ ส่งซ่อม',
-        },
-      ];
-
-      setInspections(mockHistory);
-    } catch (error) {
+      const res = await fetch(
+        `/api/inspections/history?start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch history');
+      const normalized = (data.inspections || []).map((ins: any) => ({
+        ...ins,
+        inspectionDate:
+          typeof ins.inspectionDate === 'string'
+            ? ins.inspectionDate.split('T')[0]
+            : new Date(ins.inspectionDate).toISOString().split('T')[0],
+      }));
+      setInspections(normalized);
+    } catch (error: any) {
       console.error('Error fetching history:', error);
+      alert(error?.message || 'โหลดประวัติไม่สำเร็จ');
+      setInspections([]);
     } finally {
       setLoading(false);
     }
@@ -208,7 +157,7 @@ export default function HistoryPage() {
 
         <div className="mt-4 flex gap-2">
           <button
-            onClick={fetchHistory}
+            onClick={() => fetchHistory()}
             disabled={loading}
             className="btn-primary"
           >
@@ -249,69 +198,96 @@ export default function HistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredInspections.map((inspection) => (
-            <div key={inspection.id} className="card hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    🚑 {inspection.vehicleNumber}
-                    {inspection.hodApproved && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                        ✓ อนุมัติแล้ว / Approved
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {new Date(inspection.inspectionDate).toLocaleDateString('th-TH', {
-                      year: 'numeric',
-                      month: 'long',
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-gray-600 bg-gray-50">
+              <tr>
+                <th className="text-left px-3 py-2 whitespace-nowrap">วันที่ตรวจ</th>
+                <th className="text-left px-3 py-2 whitespace-nowrap">รถ</th>
+                <th className="text-left px-3 py-2">ยานพาหนะ</th>
+                <th className="text-left px-3 py-2">เคลื่อนย้าย</th>
+                <th className="text-left px-3 py-2">พยาบาล</th>
+                <th className="text-left px-3 py-2 whitespace-nowrap">สถานะ</th>
+                <th className="text-left px-3 py-2 whitespace-nowrap">HOD</th>
+                <th className="text-right px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInspections.map((ins) => (
+                <tr key={ins.id} className="border-t border-gray-100 hover:bg-gray-50/50">
+                  <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-800">
+                    {new Date(ins.inspectionDate).toLocaleDateString('th-TH', {
+                      year: '2-digit',
+                      month: 'short',
                       day: 'numeric',
                     })}
-                    {inspection.hodApprovedAt && (
-                      <span className="ml-2">
-                        • อนุมัติเวลา / Approved at: {new Date(inspection.hodApprovedAt).toLocaleTimeString('th-TH')}
-                      </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="font-semibold">🚑 {ins.vehicleNumber}</div>
+                    {ins.licensePlate && (
+                      <div className="text-xs text-blue-700">{ins.licensePlate}</div>
                     )}
-                  </p>
-                </div>
-                <div>
-                  {inspection.overallStatus === 'ready' && (
-                    <span className="status-ready">พร้อมใช้ / Ready</span>
-                  )}
-                  {inspection.overallStatus === 'monitor' && (
-                    <span className="status-monitor">ติดตาม / Monitor</span>
-                  )}
-                  {inspection.overallStatus === 'not_ready' && (
-                    <span className="status-not-ready">ไม่พร้อม / Not Ready</span>
-                  )}
-                </div>
-              </div>
-
-              {inspection.remarks && (
-                <div className="mb-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-sm">
-                  <strong>หมายเหตุ / Remarks:</strong> {inspection.remarks}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => router.push(`/inspect/${inspection.id}`)}
-                  className="btn-secondary flex-1"
-                >
-                  ดูรายละเอียด / View Details
-                </button>
-                <button
-                  onClick={() => handleExportPDF(inspection)}
-                  disabled={exporting}
-                  className="btn-secondary inline-flex items-center justify-center gap-1"
-                  title="Export PDF"
-                >
-                  📄 PDF
-                </button>
-              </div>
-            </div>
-          ))}
+                  </td>
+                  <RoleCell completed={!!ins.driverCompleted} meta={ins.roleMeta?.driver} />
+                  <RoleCell
+                    completed={!!ins.equipmentOfficerCompleted}
+                    meta={ins.roleMeta?.equipment_officer}
+                  />
+                  <RoleCell completed={!!ins.nurseCompleted} meta={ins.roleMeta?.nurse} />
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {ins.overallStatus === 'ready' && (
+                      <span className="status-ready">พร้อมใช้</span>
+                    )}
+                    {ins.overallStatus === 'monitor' && (
+                      <span className="status-monitor">เฝ้าระวัง</span>
+                    )}
+                    {ins.overallStatus === 'not_ready' && (
+                      <span className="status-not-ready">ไม่พร้อม</span>
+                    )}
+                    {!ins.overallStatus && (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs">
+                    {ins.hodApproved ? (
+                      <div>
+                        <div className="text-green-700 font-medium">✓ อนุมัติ</div>
+                        {ins.hodApprovedAt && (
+                          <div className="text-gray-500">
+                            {new Date(ins.hodApprovedAt).toLocaleString('th-TH', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">รอ</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-right">
+                    <div className="inline-flex gap-1">
+                      <button
+                        onClick={() => router.push(`/inspect/${ins.id}`)}
+                        className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-100"
+                        title="ดูรายละเอียด"
+                      >
+                        🔍
+                      </button>
+                      <button
+                        onClick={() => handleExportPDF(ins)}
+                        disabled={exporting}
+                        className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+                        title="Export PDF"
+                      >
+                        📄
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -325,5 +301,36 @@ export default function HistoryPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+function RoleCell({
+  completed,
+  meta,
+}: {
+  completed: boolean;
+  meta?: { lastAt: string | null; userName: string | null };
+}) {
+  if (!completed && !meta?.lastAt) {
+    return (
+      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">
+        ○ ยังไม่ตรวจ
+      </td>
+    );
+  }
+  return (
+    <td className="px-3 py-2 whitespace-nowrap text-xs">
+      <div className={completed ? 'text-green-700 font-medium' : 'text-gray-600'}>
+        {completed ? '✓' : '◐'} {meta?.userName || '—'}
+      </div>
+      {meta?.lastAt && (
+        <div className="text-gray-500">
+          {new Date(meta.lastAt).toLocaleString('th-TH', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })}
+        </div>
+      )}
+    </td>
   );
 }
