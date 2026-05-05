@@ -57,6 +57,8 @@ export interface InspectionItem {
   remarks?: string;
   inspectedBy?: number;
   inspectedAt?: Date;
+  lastEditedAt?: Date;
+  lastEditedBy?: number;
   createdAt: Date;
 }
 
@@ -69,5 +71,7 @@ export interface InspectionChecklistItem {
   hasGauge?: boolean; // For visual Min-Max gauge display
   psiConfig?: { min: number; max: number; threshold: number }; // PSI configuration for oxygen tanks
   dualTanks?: boolean; // For items with 2 separate tank inputs
+  multiInputs?: Array<{ key: string; label: string; type?: 'text' | 'date' }>; // For items with several labeled inputs
+  extraInputs?: Array<{ key: string; label: string; type?: 'text' | 'date' }>; // Additional inputs rendered alongside gauge/value/dualTanks
   icon?: string; // Emoji icon to display after code number
 }

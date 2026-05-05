@@ -1,7 +1,6 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { getUserByEmail } from './lib/db';
 
 // Mock users for testing (when database is not available)
 // All passwords are 'password123' (pre-hashed for better performance)
@@ -50,8 +49,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         let user;
 
-        // Try to get user from database
+        // Lazy import to keep edge runtime (middleware) free of pg
         try {
+          const { getUserByEmail } = await import('./lib/db');
           user = await getUserByEmail(credentials.email as string);
         } catch (error) {
           // If database fails, use mock users

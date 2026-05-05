@@ -6,10 +6,12 @@ import {
   updateInspectionStatus,
   updateInspectionOverallStatus,
 } from '@/lib/db';
-
-// Mock storage (shared across requests in memory)
-const mockInspections = new Map<number, any>();
-const mockItems = new Map<number, any[]>();
+import {
+  getMockInspection,
+  setMockInspection,
+  getMockItems,
+  setMockItems,
+} from '@/lib/mock-store';
 
 export async function GET(
   request: NextRequest,
@@ -32,8 +34,8 @@ export async function GET(
     } catch (dbError) {
       // Use mock data
       console.log('Using mock data for inspection');
-      inspection = mockInspections.get(id);
-      items = mockItems.get(id) || [];
+      inspection = getMockInspection(id);
+      items = getMockItems(id);
 
       if (!inspection) {
         return NextResponse.json(
@@ -89,9 +91,8 @@ export async function PUT(
       // Use mock data
       console.log('Using mock data to save inspection');
 
-      let inspection = mockInspections.get(id);
+      let inspection = getMockInspection(id);
       if (!inspection) {
-        // Create mock inspection if not exists
         inspection = {
           id,
           ambulanceId: 1,
@@ -101,17 +102,18 @@ export async function PUT(
           equipmentOfficerCompleted: false,
           nurseCompleted: false,
           hodApproved: false,
+          hodApprovedAt: null,
+          hodApprovedBy: null,
+          remarks: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
       }
 
-      // Save items
       if (items && Array.isArray(items)) {
-        mockItems.set(id, items);
+        setMockItems(id, items);
       }
 
-      // Update completion status
       if (role && typeof completed === 'boolean') {
         if (role === 'driver') {
           inspection.driverCompleted = completed;
@@ -122,13 +124,12 @@ export async function PUT(
         }
       }
 
-      // Update overall status
       if (overallStatus) {
         inspection.overallStatus = overallStatus;
       }
 
       inspection.updatedAt = new Date();
-      mockInspections.set(id, inspection);
+      setMockInspection(id, inspection);
     }
 
     return NextResponse.json({

@@ -74,7 +74,7 @@ export async function exportInspectionToPDF(inspection: InspectionData) {
               </td>
             </tr>
             <tr>
-              <td style="padding: 8px; border: 1px solid #ddd;">Equipment Officer / เจ้าหน้าที่อุปกรณ์</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">Patient Escort / เจ้าหน้าที่เคลื่อนย้าย</td>
               <td style="padding: 8px; border: 1px solid #ddd; text-align: center; background-color: ${inspection.equipmentOfficerCompleted ? '#dcfce7' : '#fee2e2'};">
                 ${inspection.equipmentOfficerCompleted ? '✓ Completed / เสร็จสิ้น' : '✗ Pending / รอดำเนินการ'}
               </td>

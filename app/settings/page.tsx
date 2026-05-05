@@ -187,7 +187,7 @@ export default function SettingsPage() {
               <div className="text-sm text-gray-600 mb-1">บทบาท / Role</div>
               <div className="text-lg font-bold text-blue-800">
                 {profile.role === 'driver' && '🚗 เจ้าหน้าที่ยานพาหนะ / Vehicle Officer'}
-                {profile.role === 'equipment_officer' && '🔧 เจ้าหน้าที่อุปกรณ์ / Equipment Officer'}
+                {profile.role === 'equipment_officer' && '🔧 เจ้าหน้าที่เคลื่อนย้าย / Patient Escort'}
                 {profile.role === 'nurse' && '💉 พยาบาล / Nurse'}
                 {profile.role === 'hod' && '👨‍💼 หัวหน้าศูนย์ปฏิบัติการ / HOD'}
               </div>

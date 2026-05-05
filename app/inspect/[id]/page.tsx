@@ -17,7 +17,10 @@ export default function InspectPage() {
   const [items, setItems] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [employeeId, setEmployeeId] = useState('');
+
+  const employeeId = session?.user?.id || '';
+  const employeeName = session?.user?.name || '';
+  const employeeEmail = session?.user?.email || '';
 
   useEffect(() => {
     if (session?.user?.role && session.user.role !== 'hod') {
@@ -34,9 +37,12 @@ export default function InspectPage() {
       const data = await response.json();
       setInspection(data.inspection);
 
+      // Load only items belonging to the current user's role
+      // (item codes are reused across roles, so filtering prevents overwrite)
+      const currentRole = (session?.user?.role as string) || '';
       const itemsMap: Record<string, any> = {};
       data.items.forEach((item: any) => {
-        if (item.itemCode) {
+        if (item.itemCode && item.inspectorRole === currentRole) {
           const processedItem = { ...item };
 
           // Convert 'fixed' status to 'abnormal' with fixed flag
@@ -51,6 +57,23 @@ export default function InspectPage() {
             const tank2Match = item.value.match(/Tank2:\s*(\d+|-)/);
             if (tank1Match) processedItem.tank1 = tank1Match[1] !== '-' ? tank1Match[1] : '';
             if (tank2Match) processedItem.tank2 = tank2Match[1] !== '-' ? tank2Match[1] : '';
+          }
+
+          // Parse multi-inputs/extra-inputs from "label: value; label: value" format
+          const checkDef = INSPECTION_CHECKLIST.find((c) => c.code === item.itemCode);
+          const allInputs = [
+            ...(checkDef?.multiInputs || []),
+            ...(checkDef?.extraInputs || []),
+          ];
+          if (allInputs.length > 0 && item.value && typeof item.value === 'string') {
+            allInputs.forEach((mi) => {
+              const escaped = mi.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const m = item.value.match(new RegExp(`${escaped}:\\s*([^;]+)`));
+              if (m) {
+                const v = m[1].trim();
+                processedItem[mi.key] = v === '-' ? '' : v;
+              }
+            });
           }
 
           itemsMap[item.itemCode] = processedItem;
@@ -97,7 +120,7 @@ export default function InspectPage() {
       return 'bg-red-500';
     }
     // Percentage mode
-    if (itemCode === '5') {
+    if (itemCode === '5' || itemCode === '7') {
       if (level >= 75) return 'bg-green-500';
       if (level >= 50) return 'bg-yellow-500';
       return 'bg-red-500';
@@ -115,7 +138,7 @@ export default function InspectPage() {
       return 'ต่ำมาก / Very Low';
     }
     // Percentage mode
-    if (itemCode === '5') {
+    if (itemCode === '5' || itemCode === '7') {
       if (level >= 75) return 'ปกติ / Normal';
       if (level >= 50) return 'ต่ำ / Low';
       return 'ต่ำมาก / Very Low';
@@ -129,15 +152,83 @@ export default function InspectPage() {
     if (psiConfig) {
       return psiConfig.threshold;
     }
-    return itemCode === '5' ? 75 : 40;
+    return itemCode === '5' || itemCode === '7' ? 75 : 40;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate employee ID
-    if (!employeeId.trim()) {
-      alert('กรุณากรอก ID พนักงาน / Please enter Employee ID');
+    if (!employeeId) {
+      alert('กรุณาเข้าสู่ระบบก่อน / Please login first');
+      router.push('/');
+      return;
+    }
+
+    // Validate: every non-gauge item must have status, hasValue/multiInputs must be filled
+    const checklistForValidation = getChecklistByRole(userRole);
+    const missing: string[] = [];
+    const hasSubItems = (parentCode: string) =>
+      checklistForValidation.some((i) => i.code.startsWith(parentCode + '.'));
+
+    for (const c of checklistForValidation) {
+      // Skip header rows (parent of sub-items)
+      if (!c.code.includes('.') && hasSubItems(c.code)) continue;
+
+      // Status check (gauge items derive status from slider, dualTanks may also)
+      if (!c.hasGauge && !c.dualTanks) {
+        const st = items[c.code]?.status;
+        if (st !== 'normal' && st !== 'abnormal') {
+          missing.push(`ข้อ ${c.code} - ยังไม่ได้เลือก ปกติ/ผิดปกติ`);
+          continue;
+        }
+      }
+
+      if (c.hasValue) {
+        const v = (items[c.code]?.value || '').toString().trim();
+        if (!v) missing.push(`ข้อ ${c.code} - ยังไม่กรอกค่า`);
+      }
+      if (c.multiInputs) {
+        const blanks = c.multiInputs.filter(
+          (mi) => !((items[c.code]?.[mi.key] || '').toString().trim())
+        );
+        if (blanks.length > 0) {
+          missing.push(
+            `ข้อ ${c.code} - ${blanks.map((b) => b.label.split(' / ')[0]).join(', ')}`
+          );
+        }
+      }
+      if (c.extraInputs) {
+        const blanks = c.extraInputs.filter(
+          (mi) => !((items[c.code]?.[mi.key] || '').toString().trim())
+        );
+        if (blanks.length > 0) {
+          missing.push(
+            `ข้อ ${c.code} - ${blanks.map((b) => b.label.split(' / ')[0]).join(', ')}`
+          );
+        }
+      }
+    }
+    if (missing.length > 0) {
+      const top = missing.slice(0, 8);
+      const more = missing.length > top.length ? `\n... และอีก ${missing.length - top.length} ข้อ` : '';
+      alert(`กรุณาตรวจสอบและกรอกข้อมูลให้ครบ:\n• ${top.join('\n• ')}${more}`);
+      // Scroll to first missing
+      const firstCode = checklistForValidation.find((c) => {
+        if (!c.code.includes('.') && hasSubItems(c.code)) return false;
+        if (!c.hasGauge && !c.dualTanks) {
+          const st = items[c.code]?.status;
+          if (st !== 'normal' && st !== 'abnormal') return true;
+        }
+        if (c.hasValue && !((items[c.code]?.value || '').toString().trim())) return true;
+        if (c.multiInputs && c.multiInputs.some((mi) => !((items[c.code]?.[mi.key] || '').toString().trim())))
+          return true;
+        if (c.extraInputs && c.extraInputs.some((mi) => !((items[c.code]?.[mi.key] || '').toString().trim())))
+          return true;
+        return false;
+      })?.code;
+      if (firstCode) {
+        document.getElementById(`item-${firstCode}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -153,6 +244,22 @@ export default function InspectPage() {
         let value = items[checkItem.code]?.value || null;
         if (checkItem.dualTanks && (items[checkItem.code]?.tank1 || items[checkItem.code]?.tank2)) {
           value = `Tank1: ${items[checkItem.code]?.tank1 || '-'} PSI, Tank2: ${items[checkItem.code]?.tank2 || '-'} PSI`;
+        }
+        // Handle multi-inputs (serialize as "label1: value1; label2: value2")
+        if (checkItem.multiInputs && checkItem.multiInputs.length > 0) {
+          const parts = checkItem.multiInputs.map((mi) => {
+            const v = items[checkItem.code]?.[mi.key] || '-';
+            return `${mi.label}: ${v}`;
+          });
+          value = parts.join('; ');
+        }
+        // Handle extra-inputs (combine with existing value)
+        if (checkItem.extraInputs && checkItem.extraInputs.length > 0) {
+          const parts = checkItem.extraInputs.map((mi) => {
+            const v = items[checkItem.code]?.[mi.key] || '-';
+            return `${mi.label}: ${v}`;
+          });
+          value = value ? `${value}; ${parts.join('; ')}` : parts.join('; ');
         }
 
         return {
@@ -180,7 +287,7 @@ export default function InspectPage() {
       if (!response.ok) throw new Error('Failed to save');
 
       alert('บันทึกสำเร็จ / Inspection saved successfully');
-      router.push('/scanner');
+      router.push('/');
     } catch (error) {
       console.error('Error saving inspection:', error);
       alert('ไม่สามารถบันทึกได้ / Failed to save inspection');
@@ -210,13 +317,60 @@ export default function InspectPage() {
     nurse: inspection?.nurseCompleted,
   };
 
+  // Inspection date display
+  const inspectionDateRaw = inspection?.inspectionDate
+    ? new Date(inspection.inspectionDate)
+    : new Date();
+  const inspectionDateLong = inspectionDateRaw.toLocaleDateString('th-TH', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const today = new Date();
+  const isToday =
+    inspectionDateRaw.toDateString() === today.toDateString();
+  const past9am = today.getHours() >= 9;
+  const showLateWarning = isToday && past9am && !completedStatus[userRole];
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="card mb-6">
+        {/* Date banner */}
+        <div className="mb-4 -mx-6 -mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📅</span>
+            <div>
+              <div className="text-xs opacity-80">ประจำวันที่ / Inspection Date</div>
+              <div className="font-bold">{inspectionDateLong}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="bg-white/20 rounded-full px-3 py-1">
+              ⏰ ตรวจวันละ 1 ครั้ง · ก่อน 9:00 น.
+            </span>
+          </div>
+        </div>
+
+        {showLateWarning && (
+          <div className="mb-4 bg-orange-50 border border-orange-200 text-orange-800 rounded-lg px-3 py-2 text-sm flex items-start gap-2">
+            <span>⚠️</span>
+            <span>
+              <strong>เลยเวลาที่กำหนด</strong> — ตามนโยบายต้องตรวจสอบให้เสร็จก่อน 9:00 น. กรุณาแจ้ง HOD ทราบ
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl font-bold mb-1">แบบฟอร์มตรวจสอบรถพยาบาล</h1>
             <h2 className="text-lg text-gray-600 mb-2">Ambulance Inspection Form</h2>
+            {inspection?.vehicleNumber && (
+              <p className="text-sm text-gray-700 mb-2">
+                🚑 <span className="font-semibold">{inspection.vehicleNumber}</span>
+                {inspection.licensePlate && <span className="text-gray-500"> · ทะเบียน {inspection.licensePlate}</span>}
+              </p>
+            )}
             <div className="mt-2 inline-block">
               <p className="text-gray-700 bg-blue-50 border-l-4 border-blue-500 px-3 py-2 rounded">
                 <span className="font-medium">ตำแหน่ง / Role:</span> <span className="font-bold text-blue-700">{roleNames[userRole]}</span>
@@ -224,16 +378,21 @@ export default function InspectPage() {
             </div>
             <div className="mt-4">
               <label className="block text-sm font-medium mb-2">
-                ID พนักงานผู้ตรวจสอบ / Inspector Employee ID <span className="text-red-500">*</span>
+                ผู้ตรวจสอบ / Inspector
               </label>
-              <input
-                type="text"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                placeholder="กรอก ID พนักงาน / Enter Employee ID"
-                className="input-field w-full max-w-xs"
-                required
-              />
+              <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                  {employeeName.charAt(0).toUpperCase() || '?'}
+                </span>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {employeeName || 'ยังไม่ได้เข้าสู่ระบบ'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    ID: {employeeId || '-'} {employeeEmail && `· ${employeeEmail}`}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           {completedStatus[userRole] && (
@@ -313,7 +472,7 @@ export default function InspectPage() {
               }
 
               return (
-              <div key={item.code} className={`border-b pb-4 ${isSubItem ? 'ml-8' : 'mt-6'}`}>
+              <div key={item.code} id={`item-${item.code}`} className={`border-b pb-4 ${isSubItem ? 'ml-8' : 'mt-6'}`}>
                 {!isSubItem && (
                   <div className={`border-l-4 px-4 py-3 rounded mb-4 ${
                     items[item.code]?.status === 'abnormal' && items[item.code]?.fixed
@@ -415,13 +574,38 @@ export default function InspectPage() {
                                       ? `ต้องไม่ต่ำกว่า ${threshold} PSI / Must be ≥ ${threshold} PSI`
                                       : item.code === '5'
                                         ? 'ต้องไม่ต่ำกว่า 3/4 ถัง / Must be ≥ 3/4 tank'
-                                        : 'ระดับต่ำเกินไป / Level too low'}
+                                        : item.code === '7'
+                                          ? 'ต้องอยู่ในช่วง 3/4 ↔ Full / Must be in 3/4 ↔ Full range'
+                                          : 'ระดับต่ำเกินไป / Level too low'}
                                   </span>
                                 )}
                               </>
                             );
                           })()}
                         </div>
+
+                        {item.extraInputs && (
+                          <div className="grid sm:grid-cols-2 gap-3 mt-3 pt-3 border-t">
+                            {item.extraInputs.map((mi) => {
+                              const val = items[item.code]?.[mi.key] || '';
+                              const empty = !val.toString().trim();
+                              return (
+                                <div key={mi.key}>
+                                  <label className="block text-xs text-gray-600 mb-1">
+                                    {mi.label} <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type={mi.type || 'text'}
+                                    required
+                                    value={val}
+                                    onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
+                                    className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {items[item.code]?.status === 'abnormal' && (
                           <>
@@ -448,19 +632,36 @@ export default function InspectPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="flex gap-2 mb-2">
-                          <label className="flex items-center gap-2">
+                        <div className="flex gap-3 mb-2 flex-wrap">
+                          <label
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer transition-colors ${
+                              items[item.code]?.status === 'normal'
+                                ? 'border-green-500 bg-green-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
                             <input
                               type="radio"
                               name={`status-${item.code}`}
                               value="normal"
-                              checked={items[item.code]?.status !== 'abnormal'}
+                              checked={items[item.code]?.status === 'normal'}
                               onChange={() => handleItemChange(item.code, 'status', 'normal')}
                               className="w-4 h-4"
                             />
-                            <span>ปกติ / Normal</span>
+                            <span className={items[item.code]?.status === 'normal' ? 'text-green-700 font-medium' : ''}>
+                              ปกติ / Normal
+                            </span>
+                            {items[item.code]?.status === 'normal' && (
+                              <span className="text-green-600 font-bold">✓</span>
+                            )}
                           </label>
-                          <label className="flex items-center gap-2">
+                          <label
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer transition-colors ${
+                              items[item.code]?.status === 'abnormal'
+                                ? 'border-red-500 bg-red-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
                             <input
                               type="radio"
                               name={`status-${item.code}`}
@@ -469,7 +670,12 @@ export default function InspectPage() {
                               onChange={() => handleItemChange(item.code, 'status', 'abnormal')}
                               className="w-4 h-4"
                             />
-                            <span>ผิดปกติ / Abnormal</span>
+                            <span className={items[item.code]?.status === 'abnormal' ? 'text-red-700 font-medium' : ''}>
+                              ผิดปกติ / Abnormal
+                            </span>
+                            {items[item.code]?.status === 'abnormal' && (
+                              <span className="text-red-600 font-bold">✗</span>
+                            )}
                           </label>
                         </div>
 
@@ -496,14 +702,43 @@ export default function InspectPage() {
                               />
                             </div>
                           </div>
+                        ) : item.multiInputs ? (
+                          <div className="grid sm:grid-cols-2 gap-3 mt-2">
+                            {item.multiInputs.map((mi) => {
+                              const val = items[item.code]?.[mi.key] || '';
+                              const empty = !val.toString().trim();
+                              return (
+                                <div key={mi.key}>
+                                  <label className="block text-xs text-gray-600 mb-1">
+                                    {mi.label} <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type={mi.type || 'text'}
+                                    required
+                                    value={val}
+                                    onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
+                                    className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         ) : item.hasValue && (
-                          <input
-                            type="text"
-                            placeholder="กรอกค่า เช่น PSI / Enter value (e.g. PSI)"
-                            value={items[item.code]?.value || ''}
-                            onChange={(e) => handleItemChange(item.code, 'value', e.target.value)}
-                            className="input-field text-sm"
-                          />
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              กรอกค่า <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="เช่น Lot Number / e.g. Lot Number"
+                              value={items[item.code]?.value || ''}
+                              onChange={(e) => handleItemChange(item.code, 'value', e.target.value)}
+                              className={`input-field text-sm ${
+                                !(items[item.code]?.value || '').toString().trim() ? 'border-red-300' : ''
+                              }`}
+                            />
+                          </div>
                         )}
 
                         {items[item.code]?.status === 'abnormal' && (
@@ -547,7 +782,7 @@ export default function InspectPage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/scanner')}
+              onClick={() => router.push('/')}
               className="btn-secondary"
             >
               ยกเลิก / Cancel

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createInspection, getTodayInspectionByAmbulance, getInspectionsByDate } from '@/lib/db';
+import {
+  getMockInspectionsByDate,
+  getMockTodayInspection,
+  createMockInspection,
+} from '@/lib/mock-store';
 
-// Mock in-memory storage for testing
-const mockInspections: any[] = [];
-let mockInspectionId = 1;
+// Lookup ambulance metadata from the static mock list (kept in sync with public/ambulance-status route)
+const MOCK_AMBULANCES_META: Record<number, { vehicleNumber: string; licensePlate: string }> = {
+  1: { vehicleNumber: 'AMB-001', licensePlate: 'BKK-1234' },
+  2: { vehicleNumber: 'AMB-002', licensePlate: 'BKK-5678' },
+  3: { vehicleNumber: 'AMB-003', licensePlate: 'BKK-9012' },
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +26,7 @@ export async function GET(request: NextRequest) {
     } catch (dbError) {
       // Use mock data if database not available
       console.log('Database not available, using mock data');
-      inspections = mockInspections.filter(i => i.inspectionDate === date);
+      inspections = getMockInspectionsByDate(date);
     }
 
     return NextResponse.json({
@@ -63,11 +71,7 @@ export async function POST(request: NextRequest) {
       // Use mock data if database not available
       console.log('Database not available, using mock data');
 
-      const today = new Date().toISOString().split('T')[0];
-      const existing = mockInspections.find(
-        i => i.ambulanceId === ambulanceId && i.inspectionDate === today
-      );
-
+      const existing = getMockTodayInspection(ambulanceId);
       if (existing) {
         return NextResponse.json({
           inspection: existing,
@@ -75,23 +79,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      inspection = {
-        id: mockInspectionId++,
-        ambulanceId,
-        inspectionDate: today,
-        overallStatus: null,
-        driverCompleted: false,
-        equipmentOfficerCompleted: false,
-        nurseCompleted: false,
-        hodApproved: false,
-        hodApprovedAt: null,
-        hodApprovedBy: null,
-        remarks: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockInspections.push(inspection);
+      inspection = createMockInspection(ambulanceId, MOCK_AMBULANCES_META[ambulanceId]);
     }
 
     return NextResponse.json({

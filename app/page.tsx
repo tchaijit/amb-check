@@ -1,87 +1,144 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut, signIn } from 'next-auth/react';
+import { INSPECTION_CHECKLIST } from '@/lib/checklist-data';
+
+type StatusCode = 'no_data' | 'in_progress' | 'pending_approval' | 'ready' | 'monitor' | 'not_ready';
+
+const PENDING_KEY = 'pendingAmbulanceId';
+
+interface AmbulanceStatusItem {
+  ambulance: {
+    id: number;
+    vehicleNumber: string;
+    licensePlate: string;
+  };
+  status: {
+    code: StatusCode;
+    label: string;
+    labelEn: string;
+  };
+  inspection: {
+    id: number;
+    driverCompleted: boolean;
+    equipmentOfficerCompleted: boolean;
+    nurseCompleted: boolean;
+    hodApproved: boolean;
+    overallStatus?: string;
+    remarks?: string;
+    items?: Array<{
+      itemCode: string;
+      inspectorRole: string;
+      status: 'normal' | 'abnormal' | 'fixed' | null;
+      value?: string | null;
+      remarks?: string | null;
+      lastEditedAt?: string | null;
+    }>;
+  } | null;
+}
+
+const STATUS_STYLES: Record<StatusCode, { bg: string; text: string; ring: string; dot: string; icon: string }> = {
+  ready: { bg: 'bg-green-50', text: 'text-green-800', ring: 'ring-green-200', dot: 'bg-green-500', icon: '✅' },
+  monitor: { bg: 'bg-orange-50', text: 'text-orange-800', ring: 'ring-orange-200', dot: 'bg-orange-500', icon: '⚠️' },
+  not_ready: { bg: 'bg-red-50', text: 'text-red-800', ring: 'ring-red-200', dot: 'bg-red-500', icon: '⛔' },
+  pending_approval: { bg: 'bg-yellow-50', text: 'text-yellow-800', ring: 'ring-yellow-200', dot: 'bg-yellow-500', icon: '⏳' },
+  in_progress: { bg: 'bg-blue-50', text: 'text-blue-800', ring: 'ring-blue-200', dot: 'bg-blue-500', icon: '🔄' },
+  no_data: { bg: 'bg-gray-50', text: 'text-gray-700', ring: 'ring-gray-200', dot: 'bg-gray-400', icon: '⚪' },
+};
 
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [items, setItems] = useState<AmbulanceStatusItem[]>([]);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<AmbulanceStatusItem | null>(null);
+  const [startingInspection, setStartingInspection] = useState(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const getRoleInfo = (roleId: string) => {
-    const roles: Record<string, any> = {
-      driver: {
-        name: 'เจ้าหน้าที่ยานพาหนะ',
-        nameEn: 'Vehicle Officer',
-        description: 'ตรวจสอบสภาพรถพยาบาล',
-        descriptionEn: 'Inspect vehicle condition',
-        icon: '🚗',
-        color: 'bg-blue-500',
-      },
-      equipment_officer: {
-        name: 'เจ้าหน้าที่เคลื่อนย้ายผู้ป่วย',
-        nameEn: 'Patient Escort',
-        description: 'ตรวจสอบอุปกรณ์และเครื่องมือ',
-        descriptionEn: 'Inspect equipment & tools',
-        icon: '🔧',
-        color: 'bg-green-500',
-      },
-      nurse: {
-        name: 'พยาบาล',
-        nameEn: 'Nurse',
-        description: 'ตรวจสอบอุปกรณ์การแพทย์',
-        descriptionEn: 'Inspect medical equipment',
-        icon: '👨‍⚕️',
-        color: 'bg-purple-500',
-      },
-      hod: {
-        name: 'HOD Dispatch Center',
-        nameEn: 'HOD Dispatch Center',
-        description: 'อนุมัติการใช้รถพยาบาล',
-        descriptionEn: 'Approve ambulance readiness',
-        icon: '✅',
-        color: 'bg-orange-500',
-      },
-    };
-    return roles[roleId] || roles.driver;
-  };
+  const fetchStatus = useCallback(async (date: string) => {
+    setLoadingStatus(true);
+    try {
+      const res = await fetch(`/api/public/ambulance-status?date=${date}`);
+      const data = await res.json();
+      setItems(data.items || []);
+    } catch (err) {
+      console.error('Error fetching status:', err);
+      setItems([]);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus(selectedDate);
+  }, [selectedDate, fetchStatus]);
+
+  const startInspection = useCallback(
+    async (ambulanceId: number) => {
+      if (!session) {
+        sessionStorage.setItem(PENDING_KEY, String(ambulanceId));
+        emailInputRef.current?.focus();
+        return;
+      }
+      const role = session.user.role as string;
+      if (role === 'hod') {
+        router.push('/dashboard');
+        return;
+      }
+      setStartingInspection(true);
+      try {
+        const res = await fetch('/api/inspections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ambulanceId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.inspection?.id) {
+          throw new Error(data.error || 'Failed to start inspection');
+        }
+        router.push(`/inspect/${data.inspection.id}`);
+      } catch (err: any) {
+        alert(err.message || 'ไม่สามารถเริ่มตรวจสอบได้');
+        setStartingInspection(false);
+      }
+    },
+    [session, router]
+  );
+
+  // After login, resume pending inspection
+  useEffect(() => {
+    if (session) {
+      const pending = sessionStorage.getItem(PENDING_KEY);
+      if (pending) {
+        sessionStorage.removeItem(PENDING_KEY);
+        startInspection(Number(pending));
+      }
+    }
+  }, [session, startInspection]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    await signOut({ callbackUrl: '/' });
   };
-
-  // Show loading state
-  if (status === 'loading') {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-xl text-gray-600">กำลังโหลด... / Loading...</div>
-        </div>
-      </div>
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-
+      const result = await signIn('credentials', { email, password, redirect: false });
       if (result?.error) {
         setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
       } else if (result?.ok) {
-        router.push('/');
         router.refresh();
       }
     } catch (err) {
@@ -91,356 +148,622 @@ export default function HomePage() {
     }
   };
 
-  // Show login prompt if not authenticated
-  if (!session) {
-    return (
-      <div className="min-h-[calc(100vh-200px)] grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left Side - Hero Content */}
-        <div className="space-y-8">
-          {/* Hero Section */}
-          <div>
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mb-6 shadow-xl">
-              <span className="text-5xl">🚑</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              AMB Check System
-            </h1>
-            <p className="text-xl text-gray-600 mb-2">
-              ระบบตรวจสอบความพร้อมรถพยาบาล
-            </p>
-            <p className="text-lg text-gray-500 mb-6">
-              Ambulance Inspection & Management System
-            </p>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <span>Bangkok Siriroj Hospital</span>
-            </div>
-          </div>
+  const summary = items.reduce(
+    (acc, it) => {
+      acc[it.status.code] = (acc[it.status.code] || 0) + 1;
+      return acc;
+    },
+    {} as Record<StatusCode, number>
+  );
 
-          {/* Features */}
-          <div className="grid gap-4">
-            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 mb-1">ตรวจสอบอย่างเป็นระบบ</h3>
-                <p className="text-sm text-gray-600">Systematic Inspection - ระบบ Checklist ครบถ้วนทุกขั้นตอน</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 bg-green-50 rounded-xl border border-green-100">
-              <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 mb-1">QR Code Scanning</h3>
-                <p className="text-sm text-gray-600">สแกนง่าย รวดเร็ว - เข้าถึงข้อมูลรถได้ทันที</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
-              <div className="flex-shrink-0 w-12 h-12 bg-purple-600 text-white rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 mb-1">รายงานแบบ Real-time</h3>
-                <p className="text-sm text-gray-600">Real-time Reporting - ติดตามสถานะได้ทุกเมื่อ</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="text-2xl font-bold text-blue-600">4</div>
-              <div className="text-xs text-gray-600">Roles</div>
-            </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
-              <div className="text-2xl font-bold text-green-600">100%</div>
-              <div className="text-xs text-gray-600">Digital</div>
-            </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
-              <div className="text-2xl font-bold text-purple-600">24/7</div>
-              <div className="text-xs text-gray-600">Available</div>
-            </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
-              <div className="text-2xl font-bold text-orange-600">RT</div>
-              <div className="text-xs text-gray-600">Real-time</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side - Login Form */}
-        <div className="lg:pl-8">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
-            {/* Login Header */}
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">เข้าสู่ระบบ</h2>
-              <p className="text-gray-600">Login to continue</p>
-            </div>
-
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  อีเมล / Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="example@hospital.com"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  รหัสผ่าน / Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-              >
-                {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
-              </button>
-            </form>
-
-            {/* Test Accounts */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-xs font-medium text-gray-700 mb-3 text-center">
-                บัญชีทดสอบ / Test Accounts
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-blue-50 px-3 py-2 rounded-lg">
-                  <div className="font-medium text-gray-800">🚗 Driver</div>
-                  <div className="text-gray-600">driver@hospital.com</div>
-                </div>
-                <div className="bg-green-50 px-3 py-2 rounded-lg">
-                  <div className="font-medium text-gray-800">🔧 Equipment</div>
-                  <div className="text-gray-600">equipment@hospital.com</div>
-                </div>
-                <div className="bg-purple-50 px-3 py-2 rounded-lg">
-                  <div className="font-medium text-gray-800">💉 Nurse</div>
-                  <div className="text-gray-600">nurse@hospital.com</div>
-                </div>
-                <div className="bg-orange-50 px-3 py-2 rounded-lg">
-                  <div className="font-medium text-gray-800">👨‍💼 HOD</div>
-                  <div className="text-gray-600">hod@hospital.com</div>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-3 text-center">
-                รหัสผ่านทั้งหมด: <span className="font-mono font-medium">password123</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // User is authenticated
-  const userRole = session.user.role as string;
-  const roleInfo = getRoleInfo(userRole);
+  const isToday = selectedDate === today;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* User Info Header */}
-      <div className="card mb-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`${roleInfo.color} bg-white bg-opacity-20 p-4 rounded-lg text-4xl`}>
-              {roleInfo.icon}
-            </div>
+    <div className="min-h-[calc(100vh-200px)] grid lg:grid-cols-3 gap-6">
+      {/* Left: Status Dashboard (2 cols) */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="text-sm opacity-90">ยินดีต้อนรับ / Welcome</div>
-              <h2 className="text-2xl font-bold">{session.user.name}</h2>
-              <div className="text-sm opacity-90">{roleInfo.name} / {roleInfo.nameEn}</div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <span className="text-3xl">🚑</span>
+                สถานะรถพยาบาล
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Ambulance Readiness Dashboard · Bangkok Siriroj Hospital
+              </p>
+            </div>
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  วันที่ / Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={today}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+              {!isToday && (
+                <button
+                  onClick={() => setSelectedDate(today)}
+                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium"
+                >
+                  วันนี้
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex gap-2">
-            {userRole === 'hod' && (
-              <button
-                onClick={() => router.push('/admin')}
-                className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-30 transition-colors inline-flex items-center gap-2"
-              >
-                ⚙️ <span className="hidden sm:inline">จัดการระบบ / Admin</span>
-              </button>
-            )}
-            <button
-              onClick={handleLogout}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-            >
-              ออกจากระบบ / Logout
-            </button>
+
+          {/* Summary chips */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <SummaryChip code="ready" label="พร้อมใช้" count={summary.ready || 0} />
+            <SummaryChip code="monitor" label="เฝ้าระวัง" count={summary.monitor || 0} />
+            <SummaryChip code="not_ready" label="ไม่พร้อมใช้" count={summary.not_ready || 0} />
+            <SummaryChip code="pending_approval" label="รออนุมัติ" count={summary.pending_approval || 0} />
+            <SummaryChip code="in_progress" label="กำลังตรวจ" count={summary.in_progress || 0} />
+            <SummaryChip code="no_data" label="ยังไม่ตรวจ" count={summary.no_data || 0} />
           </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {userRole === 'hod' ? (
-          <>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="bg-orange-500 text-white p-4 rounded-lg text-4xl">
-                  ✅
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold mb-1">แดชบอร์ด / Dashboard</h2>
-                  <p className="text-gray-600 text-sm">
-                    ตรวจสอบและอนุมัติรถพยาบาล / Review and approve ambulances
-                  </p>
-                </div>
-                <div className="text-gray-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => router.push('/statistics')}
-              className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-500 text-white p-4 rounded-lg text-4xl">
-                  📊
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold mb-1">สถิติ / Statistics</h2>
-                  <p className="text-gray-600 text-sm">
-                    ดูสถิติและรายงาน / View statistics and reports
-                  </p>
-                </div>
-                <div className="text-gray-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => router.push('/qr-generator')}
-              className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="bg-purple-500 text-white p-4 rounded-lg text-4xl">
-                  📱
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold mb-1">QR Code</h2>
-                  <p className="text-gray-600 text-sm">
-                    สร้าง QR Code สำหรับรถพยาบาล / Generate QR Codes for ambulances
-                  </p>
-                </div>
-                <div className="text-gray-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => router.push('/admin')}
-              className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="bg-gray-700 text-white p-4 rounded-lg text-4xl">
-                  ⚙️
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold mb-1">จัดการระบบ / Admin</h2>
-                  <p className="text-gray-600 text-sm">
-                    จัดการผู้ใช้งานและรถพยาบาล / Manage users and vehicles
-                  </p>
-                </div>
-                <div className="text-gray-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-          </>
+        {/* Vehicle list */}
+        {loadingStatus ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600 mx-auto mb-3"></div>
+            <p className="text-gray-500 text-sm">กำลังโหลด... / Loading...</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+            <div className="text-5xl mb-3">📋</div>
+            <p className="text-gray-700 font-medium">ไม่มีข้อมูลรถพยาบาล</p>
+            <p className="text-sm text-gray-500 mt-1">No ambulance data available</p>
+          </div>
         ) : (
-          <button
-            onClick={() => router.push('/scanner')}
-            className="card hover:shadow-xl transition-all transform hover:-translate-y-1 text-left md:col-span-2"
-          >
-            <div className="flex items-start gap-4">
-              <div className={`${roleInfo.color} text-white p-4 rounded-lg text-4xl`}>
-                📷
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold mb-1">สแกน QR Code / Scan QR Code</h2>
-                <p className="text-gray-600 text-sm">
-                  {roleInfo.description} / {roleInfo.descriptionEn}
-                </p>
-              </div>
-              <div className="text-gray-400">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-          </button>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {items.map((item) => (
+              <VehicleCard
+                key={item.ambulance.id}
+                item={item}
+                onClick={() => setSelectedItem(item)}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="card bg-blue-50 border border-blue-200">
-        <h3 className="font-bold text-lg mb-2">ขั้นตอนการใช้งาน / How to Use</h3>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-          {userRole === 'hod' ? (
-            <>
-              <li>เข้าสู่แดชบอร์ดเพื่อดูรายการตรวจสอบ / Access dashboard to view inspections</li>
-              <li>ตรวจสอบรายละเอียดการตรวจสอบ / Review inspection details</li>
-              <li>อนุมัติหรือปฏิเสธการใช้งานรถพยาบาล / Approve or reject ambulance usage</li>
-            </>
+      {/* Right: Login / User panel (1 col) */}
+      <div className="lg:col-span-1">
+        <div className="lg:sticky lg:top-6">
+          {status === 'loading' ? (
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600 mx-auto mb-3"></div>
+              <p className="text-gray-500 text-sm">กำลังโหลด...</p>
+            </div>
+          ) : session ? (
+            <UserPanel session={session} onLogout={handleLogout} onNavigate={(p) => router.push(p)} />
           ) : (
-            <>
-              <li>สแกน QR Code ที่ติดอยู่บนรถพยาบาล / Scan the QR Code on ambulance</li>
-              <li>ทำการตรวจสอบรายการในส่วนของคุณ / Complete inspection checklist</li>
-              <li>บันทึกผลการตรวจสอบ / Save inspection results</li>
-              <li>HOD จะเข้ามาอนุมัติหลังจากทุกคนตรวจเสร็จ / HOD approves after all complete</li>
-            </>
+            <LoginPanel
+              email={email}
+              password={password}
+              error={error}
+              isLoading={isLoading}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onSubmit={handleSubmit}
+              emailInputRef={emailInputRef}
+            />
           )}
-        </ol>
+        </div>
+      </div>
+
+      {selectedItem && (
+        <InspectionModal
+          item={selectedItem}
+          isLoggedIn={!!session}
+          userRole={(session?.user?.role as string) || ''}
+          starting={startingInspection}
+          onClose={() => setSelectedItem(null)}
+          onStart={() => {
+            const id = selectedItem.ambulance.id;
+            setSelectedItem(null);
+            startInspection(id);
+          }}
+          onSectionStart={(role) => {
+            const id = selectedItem.ambulance.id;
+            const roleLabels: Record<string, string> = {
+              driver: 'เจ้าหน้าที่ยานพาหนะ',
+              equipment_officer: 'เจ้าหน้าที่เคลื่อนย้ายผู้ป่วย',
+              nurse: 'พยาบาล',
+            };
+
+            if (!session) {
+              setSelectedItem(null);
+              startInspection(id);
+              return;
+            }
+            const myRole = session.user.role as string;
+            if (myRole === 'hod') {
+              alert('HOD ไม่ใช่ผู้ตรวจสอบ จะนำไปยังแดชบอร์ด');
+              router.push('/dashboard');
+              return;
+            }
+            if (myRole !== role) {
+              alert(
+                `รายการนี้สำหรับ "${roleLabels[role]}" เท่านั้น\nคุณ login เป็น "${roleLabels[myRole] || myRole}"`
+              );
+              return;
+            }
+            setSelectedItem(null);
+            startInspection(id);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SummaryChip({ code, label, count }: { code: StatusCode; label: string; count: number }) {
+  const s = STATUS_STYLES[code];
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${s.bg} ${s.text} ring-1 ${s.ring} text-xs font-medium`}>
+      <span className={`w-2 h-2 rounded-full ${s.dot}`}></span>
+      <span>{label}</span>
+      <span className="font-bold">{count}</span>
+    </div>
+  );
+}
+
+function VehicleCard({ item, onClick }: { item: AmbulanceStatusItem; onClick: () => void }) {
+  const s = STATUS_STYLES[item.status.code];
+  const ins = item.inspection;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left w-full bg-white rounded-xl border-2 ${s.ring.replace('ring-', 'border-')} p-4 hover:shadow-md hover:-translate-y-0.5 transition-all`}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="text-lg font-bold text-gray-900">{item.ambulance.vehicleNumber}</div>
+          <div className="text-sm font-semibold text-blue-700">{item.ambulance.licensePlate}</div>
+        </div>
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full ${s.bg} ${s.text} text-xs font-semibold`}>
+          <span>{s.icon}</span>
+          <span>{item.status.label}</span>
+        </span>
+      </div>
+
+      {/* Progress indicators */}
+      <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+        <ProgressDot done={!!ins?.driverCompleted} label="ยานพาหนะ" />
+        <ProgressDot done={!!ins?.equipmentOfficerCompleted} label="เจ้าหน้าที่เคลื่อนย้าย" />
+        <ProgressDot done={!!ins?.nurseCompleted} label="พยาบาล" />
+      </div>
+
+      {ins?.hodApproved && (
+        <div className="mt-2 text-[11px] text-green-700 flex items-center gap-1">
+          <span>✓</span> HOD อนุมัติแล้ว
+        </div>
+      )}
+      {ins?.remarks && (
+        <div className="mt-2 text-[11px] text-gray-600 bg-gray-50 rounded px-2 py-1 truncate" title={ins.remarks}>
+          📝 {ins.remarks}
+        </div>
+      )}
+
+      <div className="mt-3 text-[11px] text-blue-600 font-medium flex items-center justify-end gap-1">
+        ดูรายการตรวจ <span>›</span>
+      </div>
+    </button>
+  );
+}
+
+function ProgressDot({ done, label }: { done: boolean; label: string }) {
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded ${done ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
+      <span>{done ? '✓' : '○'}</span>
+      <span className="truncate">{label}</span>
+    </div>
+  );
+}
+
+function LoginPanel({
+  email,
+  password,
+  error,
+  isLoading,
+  onEmailChange,
+  onPasswordChange,
+  onSubmit,
+  emailInputRef,
+}: {
+  email: string;
+  password: string;
+  error: string;
+  isLoading: boolean;
+  onEmailChange: (v: string) => void;
+  onPasswordChange: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  emailInputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+      <div className="text-center mb-5">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-xl mb-3 shadow-lg">
+          <span className="text-3xl">🔐</span>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
+        <p className="text-sm text-gray-500">Login to continue</p>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-3">
+        <div>
+          <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-1">
+            รหัสพนักงาน / Employee ID
+          </label>
+          <input
+            id="email"
+            ref={emailInputRef}
+            type="email"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            required
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            placeholder="example@hospital.com"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-xs font-medium text-gray-700 mb-1">
+            รหัสผ่าน / Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => onPasswordChange(e.target.value)}
+            required
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            placeholder="••••••••"
+            disabled={isLoading}
+          />
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed shadow-md"
+        >
+          {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+        </button>
+      </form>
+
+      <div className="mt-5 pt-4 border-t border-gray-200">
+        <p className="text-[10px] font-medium text-gray-600 mb-2 text-center">
+          บัญชีทดสอบ / Test Accounts
+        </p>
+        <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+          <div className="bg-blue-50 px-2 py-1.5 rounded">
+            <div className="font-medium">🚗 Driver</div>
+            <div className="text-gray-600 truncate">driver@hospital.com</div>
+          </div>
+          <div className="bg-green-50 px-2 py-1.5 rounded">
+            <div className="font-medium">🔧 Equipment</div>
+            <div className="text-gray-600 truncate">equipment@hospital.com</div>
+          </div>
+          <div className="bg-purple-50 px-2 py-1.5 rounded">
+            <div className="font-medium">💉 Nurse</div>
+            <div className="text-gray-600 truncate">nurse@hospital.com</div>
+          </div>
+          <div className="bg-orange-50 px-2 py-1.5 rounded">
+            <div className="font-medium">👨‍💼 HOD</div>
+            <div className="text-gray-600 truncate">hod@hospital.com</div>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-2 text-center">
+          รหัสผ่าน: <span className="font-mono font-medium">password123</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function UserPanel({
+  session,
+  onLogout,
+  onNavigate,
+}: {
+  session: any;
+  onLogout: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  const role = session.user.role as string;
+  const roleMap: Record<string, { name: string; icon: string; color: string }> = {
+    driver: { name: 'เจ้าหน้าที่ยานพาหนะ', icon: '🚗', color: 'bg-blue-500' },
+    equipment_officer: { name: 'เจ้าหน้าที่เคลื่อนย้ายผู้ป่วย', icon: '🔧', color: 'bg-green-500' },
+    nurse: { name: 'พยาบาล', icon: '👨‍⚕️', color: 'bg-purple-500' },
+    hod: { name: 'HOD Dispatch Center', icon: '✅', color: 'bg-orange-500' },
+  };
+  const info = roleMap[role] || roleMap.driver;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+      <div className="text-center mb-5">
+        <div className={`inline-flex items-center justify-center w-16 h-16 ${info.color} rounded-xl mb-3 shadow-lg text-3xl`}>
+          {info.icon}
+        </div>
+        <div className="text-xs text-gray-500">ยินดีต้อนรับ / Welcome</div>
+        <h2 className="text-lg font-bold text-gray-900">{session.user.name}</h2>
+        <div className="text-xs text-gray-600">{info.name}</div>
+      </div>
+
+      <div className="space-y-2">
+        {role === 'hod' ? (
+          <>
+            <NavButton icon="✅" label="แดชบอร์ด" sub="Dashboard" onClick={() => onNavigate('/dashboard')} />
+            <NavButton icon="📊" label="สถิติ" sub="Statistics" onClick={() => onNavigate('/statistics')} />
+            <NavButton icon="📱" label="QR Code" sub="Generate QR" onClick={() => onNavigate('/qr-generator')} />
+            <NavButton icon="⚙️" label="จัดการระบบ" sub="Admin" onClick={() => onNavigate('/admin')} />
+          </>
+        ) : (
+          <NavButton icon="📷" label="สแกน QR Code" sub="Start Inspection" onClick={() => onNavigate('/scanner')} primary />
+        )}
+      </div>
+
+      <button
+        onClick={onLogout}
+        className="w-full mt-4 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+      >
+        ออกจากระบบ / Logout
+      </button>
+    </div>
+  );
+}
+
+function NavButton({
+  icon,
+  label,
+  sub,
+  onClick,
+  primary,
+}: {
+  icon: string;
+  label: string;
+  sub: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+        primary
+          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+          : 'bg-gray-50 hover:bg-gray-100 text-gray-800'
+      }`}
+    >
+      <span className="text-xl">{icon}</span>
+      <div className="flex-1">
+        <div className="text-sm font-semibold">{label}</div>
+        <div className={`text-[10px] ${primary ? 'text-blue-100' : 'text-gray-500'}`}>{sub}</div>
+      </div>
+      <span className={primary ? 'text-blue-100' : 'text-gray-400'}>›</span>
+    </button>
+  );
+}
+
+function InspectionModal({
+  item,
+  isLoggedIn,
+  userRole,
+  starting,
+  onClose,
+  onStart,
+  onSectionStart,
+}: {
+  item: AmbulanceStatusItem;
+  isLoggedIn: boolean;
+  userRole: string;
+  starting: boolean;
+  onClose: () => void;
+  onStart: () => void;
+  onSectionStart: (role: 'driver' | 'equipment_officer' | 'nurse') => void;
+}) {
+  const s = STATUS_STYLES[item.status.code];
+  const ins = item.inspection;
+
+  const grouped: Record<string, typeof INSPECTION_CHECKLIST> = {
+    driver: INSPECTION_CHECKLIST.filter((c) => c.inspectorRole === 'driver'),
+    equipment_officer: INSPECTION_CHECKLIST.filter((c) => c.inspectorRole === 'equipment_officer'),
+    nurse: INSPECTION_CHECKLIST.filter((c) => c.inspectorRole === 'nurse'),
+  };
+
+  const roleMeta: Record<string, { label: string; icon: string; color: string; done: boolean }> = {
+    driver: {
+      label: 'ยานพาหนะ / Vehicle',
+      icon: '🚗',
+      color: 'bg-blue-50 text-blue-800 border-blue-200',
+      done: !!ins?.driverCompleted,
+    },
+    equipment_officer: {
+      label: 'เจ้าหน้าที่เคลื่อนย้าย / Patient Escort',
+      icon: '🔧',
+      color: 'bg-green-50 text-green-800 border-green-200',
+      done: !!ins?.equipmentOfficerCompleted,
+    },
+    nurse: {
+      label: 'พยาบาล / Nurse',
+      icon: '👨‍⚕️',
+      color: 'bg-purple-50 text-purple-800 border-purple-200',
+      done: !!ins?.nurseCompleted,
+    },
+  };
+
+  const isHod = userRole === 'hod';
+  const ctaLabel = !isLoggedIn
+    ? 'เข้าสู่ระบบเพื่อตรวจ / Login to Inspect'
+    : isHod
+    ? 'ไปที่แดชบอร์ด / Go to Dashboard'
+    : 'ไปตรวจ / Start Inspection';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-gray-100 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">🚑</span>
+              <h2 className="text-lg font-bold text-gray-900">{item.ambulance.vehicleNumber}</h2>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${s.bg} ${s.text} text-[11px] font-semibold`}>
+                {s.icon} {item.status.label}
+              </span>
+            </div>
+            <p className="text-sm font-semibold text-blue-700">ทะเบียน: {item.ambulance.licensePlate}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1"
+            aria-label="ปิด"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {(['driver', 'equipment_officer', 'nurse'] as const).map((role) => {
+            const meta = roleMeta[role];
+            const list = grouped[role];
+            const isMyRole = isLoggedIn && userRole === role;
+            const canClick = !isLoggedIn || isMyRole;
+
+            return (
+              <div key={role} className={`border rounded-xl p-3 ${meta.color}`}>
+                <button
+                  type="button"
+                  onClick={() => onSectionStart(role)}
+                  disabled={meta.done && isLoggedIn && userRole !== 'hod'}
+                  className={`w-full flex items-center justify-between mb-2 group ${
+                    canClick ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                  title={
+                    meta.done
+                      ? 'ตรวจเสร็จแล้ว'
+                      : isMyRole
+                      ? 'คลิกเพื่อเริ่มตรวจในส่วนของคุณ'
+                      : !isLoggedIn
+                      ? 'login เพื่อเริ่มตรวจ'
+                      : `สำหรับ ${meta.label} เท่านั้น`
+                  }
+                >
+                  <div className="font-semibold text-sm flex items-center gap-2">
+                    <span>{meta.icon}</span> {meta.label}
+                    <span className="text-[11px] font-normal opacity-70">({list.length} รายการ)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-medium ${meta.done ? 'text-green-700' : 'text-gray-500'}`}>
+                      {meta.done ? '✓ ตรวจแล้ว' : '○ ยังไม่ตรวจ'}
+                    </span>
+                    {!meta.done && (
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70 group-hover:bg-white ${
+                          isMyRole ? 'text-blue-700' : 'text-gray-500'
+                        }`}
+                      >
+                        ไปตรวจ ›
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <ul className="text-[12px] text-gray-700 grid sm:grid-cols-2 gap-x-3 gap-y-1 max-h-56 overflow-y-auto pr-1">
+                  {list.map((c) => {
+                    const checked = ins?.items?.find(
+                      (it) => it.itemCode === c.code && it.inspectorRole === role
+                    );
+                    const mark = !checked
+                      ? { icon: '⬜', cls: 'text-gray-400', title: 'ยังไม่ตรวจ' }
+                      : checked.status === 'abnormal'
+                      ? { icon: '❌', cls: 'text-red-600 font-semibold', title: 'ผิดปกติ' }
+                      : checked.status === 'fixed'
+                      ? { icon: '🛠️', cls: 'text-orange-600 font-semibold', title: 'แก้ไขแล้ว' }
+                      : { icon: '✅', cls: 'text-green-600', title: 'ปกติ' };
+
+                    return (
+                      <li
+                        key={`${role}-${c.code}`}
+                        className={`flex items-start gap-1.5 ${mark.cls}`}
+                        title={`${mark.title}${checked?.remarks ? ` — ${checked.remarks}` : ''}${checked?.value ? ` · ${checked.value}` : ''}`}
+                      >
+                        <span className="flex-shrink-0">{mark.icon}</span>
+                        <span className="opacity-60 flex-shrink-0">{c.code}.</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate" title={c.name}>
+                            {c.name.split(' / ')[0]}
+                          </span>
+                          {checked?.value && (
+                            <span className="block text-[10px] opacity-75 truncate font-normal" title={checked.value}>
+                              📊 {checked.value}
+                            </span>
+                          )}
+                          {checked?.remarks && (
+                            <span className="block text-[10px] opacity-75 truncate font-normal" title={checked.remarks}>
+                              📝 {checked.remarks}
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+
+          {!isLoggedIn && (
+            <div className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3">
+              ℹ️ กรุณาเข้าสู่ระบบเพื่อเริ่มตรวจสอบ — ระบบจะใช้รหัสที่ login เป็นรหัสผู้ตรวจสอบโดยอัตโนมัติ
+            </div>
+          )}
+          {isLoggedIn && isHod && (
+            <div className="text-xs bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3">
+              ℹ️ HOD ไม่ได้เป็นผู้ตรวจสอบ ระบบจะนำท่านไปยังแดชบอร์ดเพื่ออนุมัติ
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 flex gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium"
+          >
+            ปิด
+          </button>
+          <button
+            onClick={onStart}
+            disabled={starting}
+            className="flex-1 px-4 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-semibold shadow"
+          >
+            {starting ? 'กำลังเริ่ม...' : ctaLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

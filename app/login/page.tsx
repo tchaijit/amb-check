@@ -42,7 +42,7 @@ function LoginForm() {
 
   const testUsers = [
     { email: 'driver@hospital.com', role: 'เจ้าหน้าที่ยานพาหนะ / Driver', icon: '🚗' },
-    { email: 'equipment@hospital.com', role: 'เจ้าหน้าที่อุปกรณ์ / Equipment Officer', icon: '🔧' },
+    { email: 'equipment@hospital.com', role: 'เจ้าหน้าที่เคลื่อนย้าย / Patient Escort', icon: '🔧' },
     { email: 'nurse@hospital.com', role: 'พยาบาล / Nurse', icon: '💉' },
     { email: 'hod@hospital.com', role: 'หัวหน้าศูนย์ปฏิบัติการ / HOD', icon: '👨‍💼' },
   ];

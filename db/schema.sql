@@ -53,9 +53,34 @@ CREATE TABLE IF NOT EXISTS inspection_items (
   remarks TEXT,
   inspected_by INTEGER REFERENCES users(id),
   inspected_at TIMESTAMP,
+  last_edited_at TIMESTAMP,
+  last_edited_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(inspection_id, item_code)
+  UNIQUE(inspection_id, item_code, inspector_role)
 );
+
+-- Backfill columns for existing tables (safe to re-run)
+ALTER TABLE inspection_items ADD COLUMN IF NOT EXISTS last_edited_at TIMESTAMP;
+ALTER TABLE inspection_items ADD COLUMN IF NOT EXISTS last_edited_by INTEGER REFERENCES users(id);
+
+-- Migrate UNIQUE constraint to include inspector_role (safe to re-run)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'inspection_items_inspection_id_item_code_key'
+  ) THEN
+    ALTER TABLE inspection_items DROP CONSTRAINT inspection_items_inspection_id_item_code_key;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'inspection_items_inspection_id_item_code_role_key'
+  ) THEN
+    ALTER TABLE inspection_items
+      ADD CONSTRAINT inspection_items_inspection_id_item_code_role_key
+      UNIQUE (inspection_id, item_code, inspector_role);
+  END IF;
+END$$;
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_inspections_ambulance_date ON inspections(ambulance_id, inspection_date);
