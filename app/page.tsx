@@ -129,7 +129,11 @@ export default function HomePage() {
   }, [session, startInspection]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' });
+    // Force navigation through the browser instead of NextAuth's callbackUrl,
+    // which can resolve to a Vercel-protected preview URL and bounce the user
+    // through vercel.com/login.
+    await signOut({ redirect: false });
+    window.location.replace('/');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

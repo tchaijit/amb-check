@@ -62,7 +62,8 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     setMobileOpen(false);
-    await signOut({ callbackUrl: '/' });
+    await signOut({ redirect: false });
+    window.location.replace('/');
   };
 
   const isActive = (href: string) =>

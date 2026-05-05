@@ -124,7 +124,8 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    await signOut({ redirect: false });
+    window.location.replace('/');
   };
 
   const tabs = [
