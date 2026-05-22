@@ -196,15 +196,16 @@ export async function saveInspectionItem(data: {
   value?: string;
   remarks?: string;
   inspectedBy?: number;
+  employeeCode?: string;
 }): Promise<InspectionItem> {
   // On insert: set inspected_at (initial timestamp).
   // On update (re-save): keep inspected_at, update last_edited_at + last_edited_by.
   const { rows } = await query(
     `INSERT INTO inspection_items (
        inspection_id, category, item_name, item_code,
-       inspector_role, status, value, remarks, inspected_by, inspected_at
+       inspector_role, status, value, remarks, inspected_by, employee_code, inspected_at
      ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP
      )
      ON CONFLICT (inspection_id, item_code, inspector_role)
      DO UPDATE SET
@@ -212,6 +213,7 @@ export async function saveInspectionItem(data: {
        value = EXCLUDED.value,
        remarks = EXCLUDED.remarks,
        last_edited_by = EXCLUDED.inspected_by,
+       employee_code = EXCLUDED.employee_code,
        last_edited_at = CURRENT_TIMESTAMP
      RETURNING *`,
     [
@@ -224,6 +226,7 @@ export async function saveInspectionItem(data: {
       data.value || null,
       data.remarks || null,
       data.inspectedBy || null,
+      data.employeeCode || null,
     ]
   );
   return toCamelCase(rows[0]);

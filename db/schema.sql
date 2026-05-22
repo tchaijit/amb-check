@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS inspection_items (
   inspected_at TIMESTAMP,
   last_edited_at TIMESTAMP,
   last_edited_by INTEGER REFERENCES users(id),
+  employee_code VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(inspection_id, item_code, inspector_role)
 );
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS inspection_items (
 -- Backfill columns for existing tables (safe to re-run)
 ALTER TABLE inspection_items ADD COLUMN IF NOT EXISTS last_edited_at TIMESTAMP;
 ALTER TABLE inspection_items ADD COLUMN IF NOT EXISTS last_edited_by INTEGER REFERENCES users(id);
+ALTER TABLE inspection_items ADD COLUMN IF NOT EXISTS employee_code VARCHAR(50);
 
 -- Migrate UNIQUE constraint to include inspector_role (safe to re-run)
 DO $$

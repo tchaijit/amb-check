@@ -17,6 +17,7 @@ export default function InspectPage() {
   const [items, setItems] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [employeeCode, setEmployeeCode] = useState('');
 
   const employeeId = session?.user?.id || '';
   const employeeName = session?.user?.name || '';
@@ -41,8 +42,13 @@ export default function InspectPage() {
       // (item codes are reused across roles, so filtering prevents overwrite)
       const currentRole = (session?.user?.role as string) || '';
       const itemsMap: Record<string, any> = {};
+      let loadedEmployeeCode = '';
       data.items.forEach((item: any) => {
         if (item.itemCode && item.inspectorRole === currentRole) {
+          // Load employee code from the first item (all items should have the same code)
+          if (!loadedEmployeeCode && item.employeeCode) {
+            loadedEmployeeCode = item.employeeCode;
+          }
           const processedItem = { ...item };
 
           // Convert 'fixed' status to 'abnormal' with fixed flag
@@ -91,6 +97,9 @@ export default function InspectPage() {
         }
       });
       setItems(itemsMap);
+      if (loadedEmployeeCode) {
+        setEmployeeCode(loadedEmployeeCode);
+      }
     } catch (error) {
       console.error('Error fetching inspection:', error);
       // Use mock data when API is not available
@@ -172,6 +181,12 @@ export default function InspectPage() {
     if (!employeeId) {
       alert('กรุณาเข้าสู่ระบบก่อน / Please login first');
       router.push('/');
+      return;
+    }
+
+    if (!employeeCode.trim()) {
+      alert('กรุณากรอกรหัสพนักงาน / Please enter employee code');
+      document.getElementById('employee-code-input')?.focus();
       return;
     }
 
@@ -288,6 +303,7 @@ export default function InspectPage() {
           value: value,
           remarks: items[checkItem.code]?.remarks || null,
           inspectedBy: parseInt(employeeId) || 1,
+          employeeCode: employeeCode.trim(),
         };
       });
 
@@ -393,22 +409,44 @@ export default function InspectPage() {
                 <span className="font-medium">ตำแหน่ง / Role:</span> <span className="font-bold text-blue-700">{roleNames[userRole]}</span>
               </p>
             </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium mb-2">
-                ผู้ตรวจสอบ / Inspector
-              </label>
-              <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {employeeName.charAt(0).toUpperCase() || '?'}
-                </span>
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {employeeName || 'ยังไม่ได้เข้าสู่ระบบ'}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    ID: {employeeId || '-'} {employeeEmail && `· ${employeeEmail}`}
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  ผู้ตรวจสอบ / Inspector
+                </label>
+                <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    {employeeName.charAt(0).toUpperCase() || '?'}
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {employeeName || 'ยังไม่ได้เข้าสู่ระบบ'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      User ID: {employeeId || '-'} {employeeEmail && `· ${employeeEmail}`}
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="employee-code-input" className="block text-sm font-medium mb-2">
+                  <span className="text-red-600">* </span>
+                  รหัสพนักงาน / Employee Code
+                </label>
+                <input
+                  id="employee-code-input"
+                  type="text"
+                  value={employeeCode}
+                  onChange={(e) => setEmployeeCode(e.target.value)}
+                  placeholder="กรอกรหัสพนักงาน / Enter employee code"
+                  className="input-field max-w-xs"
+                  required
+                  disabled={completedStatus[userRole]}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  กรุณากรอกรหัสพนักงานของคุณเพื่อยืนยันการตรวจสอบ
+                </p>
               </div>
             </div>
           </div>
