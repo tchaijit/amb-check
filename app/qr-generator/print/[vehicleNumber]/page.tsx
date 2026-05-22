@@ -88,7 +88,7 @@ export default function PrintQrPage() {
           {/* QR Code */}
           <div className="bg-white p-8 border-4 border-primary rounded-2xl mb-6 inline-block">
             <QRCodeSVG
-              value={vehicleNumber}
+              value={`${typeof window !== 'undefined' ? window.location.origin : 'https://bsi-amb-check.vercel.app'}/scan/${vehicleNumber}`}
               size={300}
               level="H"
               includeMargin={true}
@@ -105,13 +105,13 @@ export default function PrintQrPage() {
           <div className="bg-gray-100 p-4 rounded-lg text-left">
             <h3 className="font-bold mb-2 text-center">วิธีใช้งาน / How to Use</h3>
             <ol className="text-sm space-y-1 list-decimal list-inside">
-              <li>เปิดแอปพลิเคชัน AMB Check</li>
-              <li>เลือกตำแหน่งของคุณ</li>
-              <li>สแกน QR Code นี้</li>
+              <li>สแกน QR Code ด้วยมือถือ</li>
+              <li>เข้าสู่ระบบ (ถ้ายังไม่ได้ Login)</li>
+              <li>ระบบจะเปิดหน้าตรวจสอบรถคันนี้โดยอัตโนมัติ</li>
               <li>ทำการตรวจสอบตาม checklist</li>
             </ol>
             <div className="text-xs text-gray-500 mt-2 text-center">
-              Open AMB Check app → Select role → Scan QR → Complete checklist
+              Scan QR → Login (if needed) → Auto open inspection page → Complete checklist
             </div>
           </div>
 

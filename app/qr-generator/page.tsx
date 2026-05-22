@@ -39,7 +39,7 @@ export default function QrGeneratorPage() {
 
             <div className="flex justify-center mb-4 p-4 bg-white border-2 border-gray-200 rounded-lg">
               <QRCodeSVG
-                value={ambulance.vehicleNumber}
+                value={`${typeof window !== 'undefined' ? window.location.origin : 'https://bsi-amb-check.vercel.app'}/scan/${ambulance.vehicleNumber}`}
                 size={180}
                 level="H"
                 includeMargin={true}
