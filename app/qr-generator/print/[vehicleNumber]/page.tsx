@@ -2,22 +2,51 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
+interface Ambulance {
+  id: number;
+  vehicleNumber: string;
+  licensePlate: string;
+  qrCode: string;
+  status?: string;
+}
 
 export default function PrintQrPage() {
   const params = useParams();
   const router = useRouter();
   const vehicleNumber = params.vehicleNumber as string;
+  const [ambulance, setAmbulance] = useState<Ambulance | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const ambulances: Record<string, { licensePlate: string }> = {
-    'AMB-001': { licensePlate: 'กท-1234 กรุงเทพมหานคร' },
-    'AMB-002': { licensePlate: 'นบ-5678 นนทบุรี' },
-    'AMB-003': { licensePlate: 'สป-9012 สมุทรปราการ' },
-    'AMB-004': { licensePlate: 'ปท-3456 ปทุมธานี' },
-    'AMB-005': { licensePlate: 'ชบ-7890 ชลบุรี' },
-  };
+  useEffect(() => {
+    const fetchAmbulance = async () => {
+      try {
+        const res = await fetch('/api/admin/vehicles');
+        if (!res.ok) {
+          throw new Error('Failed to fetch vehicles');
+        }
+        const data = await res.json();
+        const found = data.vehicles?.find((v: Ambulance) => v.vehicleNumber === vehicleNumber);
 
-  const ambulance = ambulances[vehicleNumber];
+        if (!found) {
+          setError('ไม่พบข้อมูลรถพยาบาล / Ambulance not found');
+        } else {
+          setAmbulance(found);
+        }
+      } catch (err: any) {
+        console.error('Error fetching ambulance:', err);
+        setError('ไม่สามารถโหลดข้อมูลรถพยาบาลได้ / Failed to load ambulance data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (vehicleNumber) {
+      fetchAmbulance();
+    }
+  }, [vehicleNumber]);
 
   useEffect(() => {
     // Load print styles
@@ -48,12 +77,24 @@ export default function PrintQrPage() {
     window.print();
   };
 
-  if (!ambulance) {
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <div className="card text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <h1 className="text-xl font-bold mb-2">กำลังโหลด... / Loading...</h1>
+          <p className="text-gray-600">กำลังโหลดข้อมูลรถพยาบาล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !ambulance) {
     return (
       <div className="max-w-2xl mx-auto p-8">
         <div className="card bg-red-50 border-red-200">
           <h1 className="text-xl font-bold text-red-800 mb-2">ไม่พบข้อมูลรถพยาบาล</h1>
-          <p className="text-red-700">Ambulance not found</p>
+          <p className="text-red-700">{error || 'Ambulance not found'}</p>
           <button onClick={() => router.push('/qr-generator')} className="btn-secondary mt-4">
             กลับ / Back
           </button>

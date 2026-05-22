@@ -1,22 +1,86 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 
+interface Ambulance {
+  id: number;
+  vehicleNumber: string;
+  licensePlate: string;
+  qrCode: string;
+  status?: string;
+}
+
 export default function QrGeneratorPage() {
   const router = useRouter();
-  const [ambulances] = useState([
-    { id: 1, vehicleNumber: 'AMB-001', licensePlate: 'กท-1234 กรุงเทพมหานคร' },
-    { id: 2, vehicleNumber: 'AMB-002', licensePlate: 'นบ-5678 นนทบุรี' },
-    { id: 3, vehicleNumber: 'AMB-003', licensePlate: 'สป-9012 สมุทรปราการ' },
-    { id: 4, vehicleNumber: 'AMB-004', licensePlate: 'ปท-3456 ปทุมธานี' },
-    { id: 5, vehicleNumber: 'AMB-005', licensePlate: 'ชบ-7890 ชลบุรี' },
-  ]);
+  const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchAmbulances = async () => {
+      try {
+        const res = await fetch('/api/admin/vehicles');
+        if (!res.ok) {
+          throw new Error('Failed to fetch vehicles');
+        }
+        const data = await res.json();
+        setAmbulances(data.vehicles || []);
+      } catch (err: any) {
+        console.error('Error fetching ambulances:', err);
+        setError('ไม่สามารถโหลดข้อมูลรถพยาบาลได้ / Failed to load ambulances');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAmbulances();
+  }, []);
 
   const handlePrint = (vehicleNumber: string) => {
     router.push(`/qr-generator/print/${vehicleNumber}`);
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <div className="card text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <h1 className="text-xl font-bold mb-2">กำลังโหลด... / Loading...</h1>
+          <p className="text-gray-600">กำลังโหลดข้อมูลรถพยาบาล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <div className="card bg-red-50 border-red-200">
+          <h1 className="text-xl font-bold text-red-800 mb-2">เกิดข้อผิดพลาด / Error</h1>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button onClick={() => router.push('/admin')} className="btn-secondary w-full">
+            ไปที่หน้าจัดการรถ / Go to Vehicle Management
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (ambulances.length === 0) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <div className="card bg-yellow-50 border-yellow-200">
+          <h1 className="text-xl font-bold text-yellow-800 mb-2">ไม่พบรถพยาบาล / No Ambulances</h1>
+          <p className="text-yellow-700 mb-4">กรุณาเพิ่มรถพยาบาลในหน้าจัดการก่อน / Please add ambulances in the management page first</p>
+          <button onClick={() => router.push('/admin')} className="btn-primary w-full">
+            ไปที่หน้าจัดการรถ / Go to Vehicle Management
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -26,6 +90,9 @@ export default function QrGeneratorPage() {
         <p className="text-gray-700">
           สร้างและพิมพ์ QR Code เพื่อนำไปติดที่รถพยาบาลแต่ละคัน<br />
           <span className="text-sm text-gray-500">Generate and print QR Codes to attach on each ambulance</span>
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          จำนวนรถพยาบาลทั้งหมด: {ambulances.length} คัน / Total: {ambulances.length} vehicles
         </p>
       </div>
 
