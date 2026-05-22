@@ -19,8 +19,10 @@ export async function PUT(
     const body = await request.json();
     const { vehicleNumber, qrCode, licensePlate, status } = body;
 
+    console.log('Updating vehicle ID:', id, 'with data:', { vehicleNumber, qrCode, licensePlate, status });
+
     if (status && !ALLOWED_STATUS.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      return NextResponse.json({ error: `Invalid status: ${status}. Allowed: ${ALLOWED_STATUS.join(', ')}` }, { status: 400 });
     }
 
     const data: any = {};
@@ -29,19 +31,27 @@ export async function PUT(
     if (licensePlate !== undefined) data.licensePlate = licensePlate;
     if (status !== undefined) data.status = status;
 
+    console.log('Calling updateAmbulance with data:', data);
     const vehicle = await updateAmbulance(id, data);
     if (!vehicle) return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
 
+    console.log('Vehicle updated successfully:', vehicle.id);
     return NextResponse.json({ vehicle });
   } catch (error: any) {
     console.error('Error updating vehicle:', error);
+    console.error('Error code:', error?.code);
+    console.error('Error message:', error?.message);
+    console.error('Error stack:', error?.stack);
     if (error?.code === '23505') {
       return NextResponse.json(
         { error: 'รหัสรถหรือ QR Code นี้มีอยู่แล้ว' },
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: 'Failed to update vehicle' }, { status: 500 });
+    return NextResponse.json({
+      error: 'Failed to update vehicle',
+      details: error?.message
+    }, { status: 500 });
   }
 }
 
