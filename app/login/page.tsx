@@ -40,13 +40,6 @@ function LoginForm() {
     }
   };
 
-  const testUsers = [
-    { email: 'driver@hospital.com', role: 'เจ้าหน้าที่ยานพาหนะ / Driver', icon: '🚗' },
-    { email: 'equipment@hospital.com', role: 'เจ้าหน้าที่เคลื่อนย้าย / Patient Escort', icon: '🔧' },
-    { email: 'nurse@hospital.com', role: 'พยาบาล / Nurse', icon: '💉' },
-    { email: 'hod@hospital.com', role: 'หัวหน้าศูนย์ปฏิบัติการ / HOD', icon: '👨‍💼' },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
@@ -107,30 +100,6 @@ function LoginForm() {
             {isLoading ? 'กำลังเข้าสู่ระบบ... / Logging in...' : 'เข้าสู่ระบบ / Login'}
           </button>
         </form>
-
-        {/* Test Users Info */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm font-medium text-gray-700 mb-3 text-center">
-            บัญชีทดสอบ / Test Accounts
-          </p>
-          <div className="space-y-2">
-            {testUsers.map((user) => (
-              <div
-                key={user.email}
-                className="bg-gray-50 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
-              >
-                <span className="text-lg">{user.icon}</span>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-800">{user.role}</div>
-                  <div className="text-gray-600 text-xs">{user.email}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-3 text-center">
-            รหัสผ่านทั้งหมด: password123 / All passwords: password123
-          </p>
-        </div>
 
         {/* Back to Home */}
         <div className="mt-6 text-center">
