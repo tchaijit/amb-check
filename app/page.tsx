@@ -468,33 +468,6 @@ function LoginPanel({
           {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
         </button>
       </form>
-
-      <div className="mt-5 pt-4 border-t border-gray-200">
-        <p className="text-[10px] font-medium text-gray-600 mb-2 text-center">
-          บัญชีทดสอบ / Test Accounts
-        </p>
-        <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-          <div className="bg-blue-50 px-2 py-1.5 rounded">
-            <div className="font-medium">🚗 Driver</div>
-            <div className="text-gray-600 truncate">driver@hospital.com</div>
-          </div>
-          <div className="bg-green-50 px-2 py-1.5 rounded">
-            <div className="font-medium">🔧 Equipment</div>
-            <div className="text-gray-600 truncate">equipment@hospital.com</div>
-          </div>
-          <div className="bg-purple-50 px-2 py-1.5 rounded">
-            <div className="font-medium">💉 Nurse</div>
-            <div className="text-gray-600 truncate">nurse@hospital.com</div>
-          </div>
-          <div className="bg-orange-50 px-2 py-1.5 rounded">
-            <div className="font-medium">👨‍💼 HOD</div>
-            <div className="text-gray-600 truncate">hod@hospital.com</div>
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-500 mt-2 text-center">
-          รหัสผ่าน: <span className="font-mono font-medium">password123</span>
-        </p>
-      </div>
     </div>
   );
 }
