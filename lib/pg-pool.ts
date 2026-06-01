@@ -6,9 +6,12 @@ declare global {
 }
 
 function createPool(): Pool {
-  const rawUrl = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
+  // Prefer the pooled connection (Supabase pgBouncer, port 6543). Serverless
+  // platforms like Vercel often cannot reach the direct connection (port 5432)
+  // because Supabase only exposes it over IPv6; the pooler is IPv4-reachable.
+  const rawUrl = process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
   if (!rawUrl) {
-    throw new Error('POSTGRES_URL_NON_POOLING or POSTGRES_URL is required');
+    throw new Error('POSTGRES_URL or POSTGRES_URL_NON_POOLING is required');
   }
 
   // Strip sslmode (handled by ssl option) and Supabase-specific flags pg doesn't recognize

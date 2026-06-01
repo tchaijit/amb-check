@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       inspections = await getInspectionsByDate(date);
     } catch (dbError) {
       // Use mock data if database not available
-      console.log('Database not available, using mock data');
+      console.error('DB unavailable, falling back to mock:', (dbError as Error)?.message);
       inspections = getMockInspectionsByDate(date);
     }
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       inspection = await createInspection(ambulanceId);
     } catch (dbError) {
       // Use mock data if database not available
-      console.log('Database not available, using mock data');
+      console.error('DB unavailable, falling back to mock:', (dbError as Error)?.message);
 
       const existing = getMockTodayInspection(ambulanceId);
       if (existing) {

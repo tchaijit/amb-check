@@ -34,7 +34,7 @@ export async function GET(
       items = await getInspectionItems(id);
     } catch (dbError) {
       // Use mock data
-      console.log('Using mock data for inspection');
+      console.error('DB read failed, falling back to mock:', (dbError as Error)?.message);
       inspection = getMockInspection(id);
       items = getMockItems(id);
 
@@ -90,7 +90,7 @@ export async function PUT(
       }
     } catch (dbError) {
       // Use mock data
-      console.log('Using mock data to save inspection');
+      console.error('DB save failed, falling back to mock:', (dbError as Error)?.message);
 
       let inspection = getMockInspection(id);
       if (!inspection) {
