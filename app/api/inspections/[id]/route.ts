@@ -5,6 +5,7 @@ import {
   saveInspectionItem,
   updateInspectionStatus,
   updateInspectionOverallStatus,
+  getAmbulanceById,
 } from '@/lib/db';
 import {
   getMockInspection,
@@ -13,6 +14,8 @@ import {
   setMockItems,
 } from '@/lib/mock-store';
 import { todayBangkok } from '@/lib/dates';
+import { sendTelegramMessage, formatInspectionComplete } from '@/lib/telegram';
+import { auth } from '@/auth';
 
 export async function GET(
   request: NextRequest,
@@ -83,6 +86,30 @@ export async function PUT(
 
       if (role && typeof completed === 'boolean') {
         await updateInspectionStatus(id, role, completed);
+
+        // Send Telegram notification when section is completed
+        if (completed && process.env.TELEGRAM_BOT_TOKEN) {
+          try {
+            const session = await auth();
+            const inspection = await getInspectionById(id);
+            const ambulance = inspection ? await getAmbulanceById(inspection.ambulanceId) : null;
+
+            if (session?.user && ambulance) {
+              const message = formatInspectionComplete({
+                vehicleNumber: ambulance.vehicleNumber,
+                licensePlate: ambulance.licensePlate,
+                inspectorName: session.user.name || 'Unknown',
+                inspectorRole: role,
+                date: new Date().toLocaleDateString('th-TH'),
+              });
+
+              await sendTelegramMessage(message);
+            }
+          } catch (notifyError) {
+            console.error('Failed to send Telegram notification:', notifyError);
+            // Don't fail the request if notification fails
+          }
+        }
       }
 
       if (overallStatus) {
