@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { exportInspectionToPDF } from '@/lib/pdf-export';
 import { todayBangkok } from '@/lib/dates';
+import DateInput from '@/components/DateInput';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -113,20 +114,18 @@ export default function HistoryPage() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">วันที่เริ่มต้น / Start Date</label>
-            <input
-              type="date"
+            <DateInput
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={setStartDate}
+              label="วันที่เริ่มต้น / Start Date"
               className="input-field"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">วันที่สิ้นสุด / End Date</label>
-            <input
-              type="date"
+            <DateInput
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={setEndDate}
+              label="วันที่สิ้นสุด / End Date"
               className="input-field"
             />
           </div>

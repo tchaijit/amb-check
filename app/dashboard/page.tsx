@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { exportInspectionToPDF, exportMultipleInspectionsToPDF } from '@/lib/pdf-export';
 import { INSPECTION_CHECKLIST } from '@/lib/checklist-data';
 import { todayBangkok } from '@/lib/dates';
+import DateInput from '@/components/DateInput';
 
 const STATUS_OPTIONS: Array<{ code: 'ready' | 'monitor' | 'not_ready'; label: string; cls: string }> = [
   { code: 'ready', label: '✅ พร้อมใช้ / Ready', cls: 'border-green-500 bg-green-50 text-green-700' },
@@ -131,11 +132,10 @@ export default function DashboardPage() {
 
         <div className="mt-4 flex gap-4 items-end flex-wrap">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium mb-2">เลือกวันที่ / Select Date</label>
-            <input
-              type="date"
+            <DateInput
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={setSelectedDate}
+              label="เลือกวันที่ / Select Date"
               className="input-field"
             />
           </div>

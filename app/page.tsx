@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { INSPECTION_CHECKLIST } from '@/lib/checklist-data';
 import { todayBangkok } from '@/lib/dates';
+import DateInput from '@/components/DateInput';
 
 type StatusCode = 'no_data' | 'in_progress' | 'pending_approval' | 'ready' | 'monitor' | 'not_ready';
 
@@ -181,18 +182,12 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex items-end gap-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  วันที่ / Date
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  max={today}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-              </div>
+              <DateInput
+                value={selectedDate}
+                onChange={setSelectedDate}
+                label="วันที่ / Date"
+                max={today}
+              />
               {!isToday && (
                 <button
                   onClick={() => setSelectedDate(today)}
