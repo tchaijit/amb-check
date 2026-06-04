@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { sendTelegramMessage } from '@/lib/telegram';
 
 /**
  * Test Telegram notification endpoint
  * GET /api/notifications/test
  */
-export async function GET(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   const testMessage = `
 🧪 <b>ทดสอบการส่งข้อความ</b>
 
