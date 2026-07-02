@@ -120,6 +120,9 @@ export default function StatisticsPage() {
             >
               🔄 {loading ? 'กำลังโหลด...' : 'รีเฟรช'}
             </button>
+            <button onClick={() => router.push('/reports')} className="btn-primary">
+              📄 ออกรายงาน
+            </button>
           </div>
         </div>
 

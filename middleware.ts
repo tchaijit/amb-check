@@ -9,6 +9,7 @@ const protectedRoutes = {
   '/dashboard': ['hod'],
   '/history': ['hod'],
   '/statistics': ['hod'],
+  '/reports': ['hod'],
   '/qr-generator': ['hod', 'equipment_officer'],
   '/admin': ['hod'], // Admin panel for HOD only
 };

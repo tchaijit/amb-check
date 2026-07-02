@@ -16,6 +16,7 @@ const ALL_MENU: MenuItem[] = [
   { href: '/', icon: '🏠', label: 'หน้าหลัก', sub: 'Home' },
   { href: '/dashboard', icon: '📋', label: 'แดชบอร์ด', sub: 'Dashboard', roles: ['hod'] },
   { href: '/statistics', icon: '📊', label: 'สถิติ', sub: 'Statistics', roles: ['hod'] },
+  { href: '/reports', icon: '📄', label: 'รายงาน', sub: 'Reports', roles: ['hod'] },
   { href: '/history', icon: '🗂️', label: 'ประวัติ', sub: 'History', roles: ['hod'] },
   { href: '/qr-generator', icon: '📱', label: 'QR Code', sub: 'Generator', roles: ['hod', 'equipment_officer'] },
   { href: '/admin', icon: '⚙️', label: 'จัดการระบบ', sub: 'Admin', roles: ['hod'] },
