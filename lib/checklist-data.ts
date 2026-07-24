@@ -98,8 +98,10 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
     category: 'oxygen',
     inspectorRole: 'nurse',
     multiInputs: [
-      { key: 'bpiCode', label: 'BPI Code', type: 'text' },
-      { key: 'due', label: 'วันครบกำหนด / Due date', type: 'date' },
+      { key: 'defibBpiCode', label: 'Defibrillator - BPI Code', type: 'text' },
+      { key: 'defibDue', label: 'Defibrillator - วันครบกำหนด / Due date', type: 'date' },
+      { key: 'aedBpiCode', label: 'AED - BPI Code', type: 'text' },
+      { key: 'aedDue', label: 'AED - วันครบกำหนด / Due date', type: 'date' },
     ],
   },
   { code: '1.1', name: 'ตรวจสอบระดับแบตเตอรี่ Defibrillator/AED / Check Defibrillator/AED battery level', icon: '🔋', category: 'oxygen', inspectorRole: 'nurse' },
@@ -121,7 +123,17 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
     inspectorRole: 'nurse',
     multiInputs: [{ key: 'exp', label: 'วันหมดอายุ Exp. / Expiry Date', type: 'date' }],
   },
-  { code: '2', name: 'สายวัด BP+ Cuff (adult 1 ชุด) / BP+ Cuff (Adult 1 set)', icon: '🩺', category: 'oxygen', inspectorRole: 'nurse' },
+  {
+    code: '2',
+    name: 'สายวัด BP+ Cuff (adult 1 ชุด) / BP+ Cuff (Adult 1 set)',
+    icon: '🩺',
+    category: 'oxygen',
+    inspectorRole: 'nurse',
+    multiInputs: [
+      { key: 'bpMonitorBpiCode', label: 'BP Monitor - BPI Code', type: 'text' },
+      { key: 'bpMonitorDue', label: 'BP Monitor - วันครบกำหนด / Due date', type: 'date' },
+    ],
+  },
   {
     code: '3',
     name: 'Red dot Adult 10 ชิ้น / Red dot Adult (10 pieces)',
@@ -146,7 +158,11 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
     icon: '💨',
     category: 'oxygen',
     inspectorRole: 'nurse',
-    multiInputs: [{ key: 'maintDate', label: 'วันที่ Maintenance / Maintenance Date', type: 'date' }],
+    multiInputs: [
+      { key: 'maintDate', label: 'วันที่ Maintenance / Maintenance Date', type: 'date' },
+      { key: 'suctionBpiCode', label: 'Suction - BPI Code', type: 'text' },
+      { key: 'suctionDue', label: 'Suction - วันครบกำหนด / Due date', type: 'date' },
+    ],
   },
   {
     code: '8',
