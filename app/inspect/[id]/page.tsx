@@ -204,11 +204,15 @@ export default function InspectPage() {
       // Status check (gauge items derive status from slider, dualTanks may also)
       if (!c.hasGauge && !c.dualTanks) {
         const st = items[c.code]?.status;
-        if (st !== 'normal' && st !== 'abnormal') {
-          missing.push(`ข้อ ${c.code} - ยังไม่ได้เลือก ปกติ/ผิดปกติ`);
+        const allowNa = c.inspectorRole === 'nurse';
+        if (st !== 'normal' && st !== 'abnormal' && !(allowNa && st === 'na')) {
+          missing.push(`ข้อ ${c.code} - ยังไม่ได้เลือก ปกติ/ผิดปกติ${allowNa ? '/ไม่มี' : ''}`);
           continue;
         }
       }
+
+      // N/A: no further inputs required for this item
+      if (items[c.code]?.status === 'na') continue;
 
       if (c.hasValue) {
         const v = (items[c.code]?.value || '').toString().trim();
@@ -244,8 +248,9 @@ export default function InspectPage() {
         if (!c.code.includes('.') && hasSubItems(c.code)) return false;
         if (!c.hasGauge && !c.dualTanks) {
           const st = items[c.code]?.status;
-          if (st !== 'normal' && st !== 'abnormal') return true;
+          if (st !== 'normal' && st !== 'abnormal' && !(c.inspectorRole === 'nurse' && st === 'na')) return true;
         }
+        if (items[c.code]?.status === 'na') return false;
         if (c.hasValue && !((items[c.code]?.value || '').toString().trim())) return true;
         if (c.multiInputs && c.multiInputs.some((mi) => !((items[c.code]?.[mi.key] || '').toString().trim())))
           return true;
@@ -279,7 +284,7 @@ export default function InspectPage() {
           value = `Tank1: ${items[checkItem.code]?.tank1 || '-'} PSI, Tank2: ${items[checkItem.code]?.tank2 || '-'} PSI`;
         }
         // Handle multi-inputs (serialize as "label1: value1; label2: value2")
-        if (checkItem.multiInputs && checkItem.multiInputs.length > 0) {
+        if (checkItem.multiInputs && checkItem.multiInputs.length > 0 && itemStatus !== 'na') {
           const parts = checkItem.multiInputs.map((mi) => {
             const v = items[checkItem.code]?.[mi.key] || '-';
             return `${mi.label}: ${v}`;
@@ -741,6 +746,30 @@ export default function InspectPage() {
                               <span className="text-red-600 font-bold">✗</span>
                             )}
                           </label>
+                          {item.inspectorRole === 'nurse' && (
+                            <label
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer transition-colors ${
+                                items[item.code]?.status === 'na'
+                                  ? 'border-gray-500 bg-gray-100'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`status-${item.code}`}
+                                value="na"
+                                checked={items[item.code]?.status === 'na'}
+                                onChange={() => handleItemChange(item.code, 'status', 'na')}
+                                className="w-4 h-4"
+                              />
+                              <span className={items[item.code]?.status === 'na' ? 'text-gray-700 font-medium' : ''}>
+                                ไม่มี/ไม่เกี่ยวข้อง / N/A
+                              </span>
+                              {items[item.code]?.status === 'na' && (
+                                <span className="text-gray-600 font-bold">➖</span>
+                              )}
+                            </label>
+                          )}
                         </div>
 
                         {item.dualTanks ? (
@@ -766,7 +795,7 @@ export default function InspectPage() {
                               />
                             </div>
                           </div>
-                        ) : item.multiInputs ? (
+                        ) : item.multiInputs && items[item.code]?.status !== 'na' ? (
                           <div className="grid sm:grid-cols-2 gap-3 mt-2">
                             {item.multiInputs.map((mi) => {
                               const val = items[item.code]?.[mi.key] || '';

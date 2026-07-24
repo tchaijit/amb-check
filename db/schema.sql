@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS inspection_items (
   item_name VARCHAR(255) NOT NULL,
   item_code VARCHAR(50),
   inspector_role VARCHAR(50) NOT NULL CHECK (inspector_role IN ('driver', 'equipment_officer', 'nurse')),
-  status VARCHAR(50) CHECK (status IN ('normal', 'abnormal', 'fixed')),
+  status VARCHAR(50) CHECK (status IN ('normal', 'abnormal', 'fixed', 'na')),
   value TEXT,
   remarks TEXT,
   inspected_by INTEGER REFERENCES users(id),

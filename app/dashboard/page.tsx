@@ -405,11 +405,12 @@ function InspectionDetailModal({
           if (it.status === 'normal') acc.normal++;
           else if (it.status === 'abnormal') acc.abnormal++;
           else if (it.status === 'fixed') acc.fixed++;
+          else if (it.status === 'na') acc.na++;
           return acc;
         },
-        { normal: 0, abnormal: 0, fixed: 0 }
+        { normal: 0, abnormal: 0, fixed: 0, na: 0 }
       )
-    : { normal: 0, abnormal: 0, fixed: 0 };
+    : { normal: 0, abnormal: 0, fixed: 0, na: 0 };
 
   const inspectedDate = inspection.inspectionDate
     ? new Date(inspection.inspectionDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -470,6 +471,7 @@ function InspectionDetailModal({
             <SummaryPill label="✅ ปกติ" value={counts.normal} cls="bg-green-50 text-green-700" />
             <SummaryPill label="🛠️ แก้ไขแล้ว" value={counts.fixed} cls="bg-orange-50 text-orange-700" />
             <SummaryPill label="❌ ผิดปกติ" value={counts.abnormal} cls="bg-red-50 text-red-700" />
+            <SummaryPill label="➖ ไม่มี/ไม่เกี่ยวข้อง" value={counts.na} cls="bg-gray-100 text-gray-600" />
           </div>
 
           {inspection.remarks && (
@@ -579,6 +581,8 @@ function RoleSection({
             ? { icon: '❌', cls: 'text-red-600 font-semibold', title: 'ผิดปกติ' }
             : it.status === 'fixed'
             ? { icon: '🛠️', cls: 'text-orange-600 font-semibold', title: 'แก้ไขแล้ว' }
+            : it.status === 'na'
+            ? { icon: '➖', cls: 'text-gray-500', title: 'ไม่มี/ไม่เกี่ยวข้อง' }
             : { icon: '✅', cls: 'text-green-700', title: 'ปกติ' };
 
           const editedTs = it?.lastEditedAt ? new Date(it.lastEditedAt).getTime() : 0;

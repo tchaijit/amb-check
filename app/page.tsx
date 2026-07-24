@@ -34,7 +34,7 @@ interface AmbulanceStatusItem {
     items?: Array<{
       itemCode: string;
       inspectorRole: string;
-      status: 'normal' | 'abnormal' | 'fixed' | null;
+      status: 'normal' | 'abnormal' | 'fixed' | 'na' | null;
       value?: string | null;
       remarks?: string | null;
       lastEditedAt?: string | null;
@@ -724,6 +724,8 @@ function InspectionModal({
                       ? { icon: '❌', cls: 'text-red-600 font-semibold', title: 'ผิดปกติ' }
                       : checked.status === 'fixed'
                       ? { icon: '🛠️', cls: 'text-orange-600 font-semibold', title: 'แก้ไขแล้ว' }
+                      : checked.status === 'na'
+                      ? { icon: '➖', cls: 'text-gray-500', title: 'ไม่มี/ไม่เกี่ยวข้อง' }
                       : { icon: '✅', cls: 'text-green-600', title: 'ปกติ' };
 
                     return (

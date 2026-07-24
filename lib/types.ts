@@ -4,7 +4,7 @@ export type UserRole = 'driver' | 'equipment_officer' | 'nurse' | 'hod';
 
 export type InspectionStatus = 'ready' | 'not_ready' | 'monitor';
 
-export type ItemStatus = 'normal' | 'abnormal' | 'fixed';
+export type ItemStatus = 'normal' | 'abnormal' | 'fixed' | 'na';
 
 export type InspectorRole = 'driver' | 'equipment_officer' | 'nurse';
 
