@@ -69,8 +69,26 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
   },
 
   // Oxygen - Equipment Officer
-  { code: '1', name: 'ปริมาณออกซิเจน ถัง 1 / Oxygen tank 1 (≥500 PSI)', icon: '🫁', category: 'oxygen', inspectorRole: 'equipment_officer', hasGauge: true, psiConfig: { min: 0, max: 2000, threshold: 500 } },
-  { code: '2', name: 'ปริมาณออกซิเจน ถัง 2 / Oxygen tank 2 (≥500 PSI)', icon: '🫁', category: 'oxygen', inspectorRole: 'equipment_officer', hasGauge: true, psiConfig: { min: 0, max: 2000, threshold: 500 } },
+  {
+    code: '1',
+    name: 'ปริมาณออกซิเจน ถัง 1 / Oxygen tank 1 (≥500 PSI)',
+    icon: '🫁',
+    category: 'oxygen',
+    inspectorRole: 'equipment_officer',
+    hasGauge: true,
+    psiConfig: { min: 0, max: 2000, threshold: 500 },
+    extraInputs: [{ key: 'psi', label: 'ปริมาณที่วัดได้ (PSI) / Measured (PSI)', type: 'text' }],
+  },
+  {
+    code: '2',
+    name: 'ปริมาณออกซิเจน ถัง 2 / Oxygen tank 2 (≥500 PSI)',
+    icon: '🫁',
+    category: 'oxygen',
+    inspectorRole: 'equipment_officer',
+    hasGauge: true,
+    psiConfig: { min: 0, max: 2000, threshold: 500 },
+    extraInputs: [{ key: 'psi', label: 'ปริมาณที่วัดได้ (PSI) / Measured (PSI)', type: 'text' }],
+  },
   {
     code: '3',
     name: 'ปริมาณออกซิเจน Mobile / Mobile oxygen (1000 PSI)',
@@ -80,6 +98,7 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
     hasGauge: true,
     psiConfig: { min: 0, max: 2000, threshold: 1000 },
     extraInputs: [
+      { key: 'psi', label: 'ปริมาณที่วัดได้ (PSI) / Measured (PSI)', type: 'text' },
       { key: 'maintDate', label: 'วันที่ Maintenance / Maintenance Date', type: 'date' },
     ],
   },
