@@ -91,7 +91,17 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
   { code: '9', name: 'หมอน + ผ้าห่ม (พร้อมใช้งาน) / Pillow + Blanket (ready to use)', icon: '🛌', category: 'oxygen', inspectorRole: 'equipment_officer' },
 
   // Nurse - Medical equipment
-  { code: '1', name: 'Defibrillator/AED', icon: '⚡', category: 'oxygen', inspectorRole: 'nurse' },
+  {
+    code: '1',
+    name: 'Defibrillator/AED',
+    icon: '⚡',
+    category: 'oxygen',
+    inspectorRole: 'nurse',
+    multiInputs: [
+      { key: 'bpiCode', label: 'BPI Code', type: 'text' },
+      { key: 'due', label: 'วันครบกำหนด / Due date', type: 'date' },
+    ],
+  },
   { code: '1.1', name: 'ตรวจสอบระดับแบตเตอรี่ Defibrillator/AED / Check Defibrillator/AED battery level', icon: '🔋', category: 'oxygen', inspectorRole: 'nurse' },
   { code: '1.2', name: 'Defibrillator test load (หากไม่มี ใส่ข้อมูล NA / If not available, enter NA)', icon: '🧪', category: 'oxygen', inspectorRole: 'nurse' },
   { code: '1.3', name: 'Paddle Defibrillator (หากไม่มี ใส่ข้อมูล NA / If not available, enter NA)', icon: '⚡', category: 'oxygen', inspectorRole: 'nurse' },
