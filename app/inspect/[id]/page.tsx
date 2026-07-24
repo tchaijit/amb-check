@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { INSPECTION_CHECKLIST, getChecklistByRole } from '@/lib/checklist-data';
 import type { InspectionItem } from '@/lib/types';
+import DateInput from '@/components/DateInput';
 
 export default function InspectPage() {
   const router = useRouter();
@@ -649,13 +650,21 @@ export default function InspectPage() {
                                   <label className="block text-xs text-gray-600 mb-1">
                                     {mi.label} <span className="text-red-500">*</span>
                                   </label>
-                                  <input
-                                    type={mi.type || 'text'}
-                                    required
-                                    value={val}
-                                    onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
-                                    className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
-                                  />
+                                  {mi.type === 'date' ? (
+                                    <DateInput
+                                      value={val}
+                                      onChange={(v) => handleItemChange(item.code, mi.key, v)}
+                                      className={empty ? 'border-red-300' : ''}
+                                    />
+                                  ) : (
+                                    <input
+                                      type={mi.type || 'text'}
+                                      required
+                                      value={val}
+                                      onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
+                                      className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
+                                    />
+                                  )}
                                 </div>
                               );
                             })}
@@ -767,13 +776,21 @@ export default function InspectPage() {
                                   <label className="block text-xs text-gray-600 mb-1">
                                     {mi.label} <span className="text-red-500">*</span>
                                   </label>
-                                  <input
-                                    type={mi.type || 'text'}
-                                    required
-                                    value={val}
-                                    onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
-                                    className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
-                                  />
+                                  {mi.type === 'date' ? (
+                                    <DateInput
+                                      value={val}
+                                      onChange={(v) => handleItemChange(item.code, mi.key, v)}
+                                      className={empty ? 'border-red-300' : ''}
+                                    />
+                                  ) : (
+                                    <input
+                                      type={mi.type || 'text'}
+                                      required
+                                      value={val}
+                                      onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
+                                      className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
+                                    />
+                                  )}
                                 </div>
                               );
                             })}

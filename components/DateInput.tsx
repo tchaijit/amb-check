@@ -181,8 +181,8 @@ export default function DateInput({
 
   // ช่วงปี พ.ศ. ใน dropdown
   const nowBE = new Date().getFullYear() + 543;
-  const minBE = min ? Number(min.slice(0, 4)) + 543 : nowBE - 6;
-  const maxBE = max ? Number(max.slice(0, 4)) + 543 : nowBE + 1;
+  const minBE = min ? Number(min.slice(0, 4)) + 543 : nowBE - 10;
+  const maxBE = max ? Number(max.slice(0, 4)) + 543 : nowBE + 10;
   const yearOptions: number[] = [];
   for (let y = maxBE; y >= minBE; y--) yearOptions.push(y);
 
