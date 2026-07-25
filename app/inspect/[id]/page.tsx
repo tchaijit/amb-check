@@ -323,13 +323,25 @@ export default function InspectPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save');
+      if (!response.ok) {
+        let serverMsg = '';
+        try {
+          const err = await response.json();
+          serverMsg = err?.error || '';
+        } catch {
+          /* ignore parse errors */
+        }
+        throw new Error(serverMsg || 'Failed to save');
+      }
 
       alert('บันทึกสำเร็จ / Inspection saved successfully');
       router.push('/');
     } catch (error) {
       console.error('Error saving inspection:', error);
-      alert('ไม่สามารถบันทึกได้ / Failed to save inspection');
+      const msg = error instanceof Error && error.message && error.message !== 'Failed to save'
+        ? `\n\n${error.message}`
+        : '';
+      alert(`ไม่สามารถบันทึกได้ / Failed to save inspection${msg}`);
     } finally {
       setSaving(false);
     }

@@ -17,6 +17,14 @@ import { todayBangkok } from '@/lib/dates';
 import { sendTelegramMessage, formatInspectionComplete } from '@/lib/telegram';
 import { auth } from '@/auth';
 
+// A real database is configured — mock fallback on WRITE would silently lose data.
+const dbConfigured = () =>
+  !!(
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_PRISMA_URL
+  );
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -116,7 +124,21 @@ export async function PUT(
         await updateInspectionOverallStatus(id, overallStatus);
       }
     } catch (dbError) {
-      // Use mock data
+      // If a real DB is configured, surface the failure instead of silently
+      // "saving" to the in-memory mock (data would be lost on serverless).
+      if (dbConfigured()) {
+        console.error('DB save failed (no fallback, DB is configured):', (dbError as Error)?.message);
+        return NextResponse.json(
+          {
+            error:
+              'บันทึกลงฐานข้อมูลไม่สำเร็จ กรุณาลองใหม่หรือแจ้งผู้ดูแลระบบ / Failed to save to database. Please retry or contact admin.',
+            detail: (dbError as Error)?.message || 'unknown DB error',
+          },
+          { status: 500 }
+        );
+      }
+
+      // No DB configured (local/demo mode) — use mock data
       console.error('DB save failed, falling back to mock:', (dbError as Error)?.message);
 
       let inspection = getMockInspection(id);
