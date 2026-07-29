@@ -628,6 +628,45 @@ export default function InspectPage() {
                             const minVal = isPsiMode ? item.psiConfig!.min : 0;
                             const maxVal = isPsiMode ? item.psiConfig!.max : 100;
 
+                            // Percent gauges (fluid levels): simple 3-choice buttons instead of a slider
+                            if (!isPsiMode) {
+                              const threshold = getMinThreshold(item.code, item.psiConfig);
+                              const levels = [
+                                { v: 50, label: '1/2 ถัง' },
+                                { v: 75, label: '3/4 ถัง' },
+                                { v: 100, label: 'เต็มถัง / Full' },
+                              ];
+                              const selected = items[item.code]?.gaugeLevel;
+                              return (
+                                <div className="flex gap-2 flex-wrap">
+                                  {levels.map((l) => {
+                                    const isSelected = selected === l.v;
+                                    const ok = l.v >= threshold;
+                                    return (
+                                      <button
+                                        key={l.v}
+                                        type="button"
+                                        onClick={() => {
+                                          handleItemChange(item.code, 'gaugeLevel', l.v);
+                                          handleItemChange(item.code, 'status', ok ? 'normal' : 'abnormal');
+                                        }}
+                                        className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors ${
+                                          isSelected
+                                            ? ok
+                                              ? 'border-green-500 bg-green-50 text-green-700'
+                                              : 'border-red-500 bg-red-50 text-red-700'
+                                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                        }`}
+                                      >
+                                        {l.label}
+                                        {isSelected && <span className="ml-1 font-bold">{ok ? '✓' : '✗'}</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+
                             return (
                               <>
                                 <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -683,7 +722,15 @@ export default function InspectPage() {
                             return (
                               <>
                                 <div className={`px-3 py-1 rounded font-medium ${getGaugeColor(currentValue, item.code, item.psiConfig)} text-white`}>
-                                  {currentValue}{isPsiMode ? ' PSI' : '%'}
+                                  {isPsiMode
+                                    ? `${currentValue} PSI`
+                                    : currentValue === 50
+                                    ? '1/2 ถัง'
+                                    : currentValue === 75
+                                    ? '3/4 ถัง'
+                                    : currentValue === 100
+                                    ? 'เต็มถัง'
+                                    : `${currentValue}%`}
                                 </div>
                                 {currentValue < threshold && (
                                   <span className="text-red-600 text-xs">
