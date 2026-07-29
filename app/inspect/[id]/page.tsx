@@ -930,7 +930,7 @@ export default function InspectPage() {
                         ) : item.hasValue && (
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">
-                              กรอกค่า <span className="text-red-500">*</span>
+                              {item.valueLabel || 'กรอกค่า'} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"

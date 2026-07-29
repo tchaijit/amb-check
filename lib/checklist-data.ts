@@ -34,7 +34,16 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
   { code: '18', name: 'ไฟแสงสว่างภายในรถ / Interior lights', icon: '💡', category: 'vehicle', inspectorRole: 'driver' },
   { code: '19', name: 'ระบบเครื่องปรับอากาศ / Air conditioning', icon: '❄️', category: 'vehicle', inspectorRole: 'driver' },
   { code: '20', name: 'วิทยุสื่อสาร - เสาอากาศ บนรถ Ambulance / Radio communication - Antenna on Ambulance', icon: '📡', category: 'vehicle', inspectorRole: 'driver' },
-  { code: '22', name: 'แรงดันลมยาง (40-50 ปอนด์) / Tire pressure (40-50 PSI)', icon: '⚙️', category: 'vehicle', inspectorRole: 'driver' },
+  {
+    code: '22',
+    name: 'แรงดันลมยาง (40-50 ปอนด์) / Tire pressure (40-50 PSI)',
+    icon: '⚙️',
+    category: 'vehicle',
+    inspectorRole: 'driver',
+    multiInputs: [
+      { key: 'tirePsi', label: 'แรงดันที่วัดได้ (ปอนด์) / Measured (PSI)', type: 'text' },
+    ],
+  },
 
   // Equipment Officer
   { code: '23', name: 'หม้อแปลงไฟ 220V (อุปกรณ์ใช้ไฟ VAC ใช้งานได้) / 220V Power inverter (VAC electrical equipment working)', icon: '⚡', category: 'equipment', inspectorRole: 'driver' },
@@ -54,6 +63,7 @@ export const INSPECTION_CHECKLIST: InspectionChecklistItem[] = [
     category: 'equipment',
     inspectorRole: 'driver',
     hasValue: true,
+    valueLabel: 'กรอกค่า Lot Number / Lot Number',
   },
   {
     code: '35',

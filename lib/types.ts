@@ -68,6 +68,7 @@ export interface InspectionChecklistItem {
   category: 'vehicle' | 'equipment' | 'oxygen';
   inspectorRole: InspectorRole;
   hasValue?: boolean;
+  valueLabel?: string; // Custom label for the hasValue input (default: 'กรอกค่า')
   hasGauge?: boolean; // For visual Min-Max gauge display
   psiConfig?: { min: number; max: number; threshold: number }; // PSI configuration for oxygen tanks
   dualTanks?: boolean; // For items with 2 separate tank inputs
