@@ -80,15 +80,46 @@ export default function MonthlyReport() {
   // Chart data: one point per day of the selected month
   const daysInMonth = new Date(year, month, 0).getDate();
   const byDate = new Map(daily.map((d) => [d.date.slice(0, 10), d.overallStatus]));
-  const chartData = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const st = byDate.get(iso);
-    return {
-      day,
-      level: st && st in STATUS_LEVEL ? STATUS_LEVEL[st] : null,
-    };
-  });
+  const chartData: Array<{ day: number; level: number | null; gap: number | null }> =
+    Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const st = byDate.get(iso);
+      return {
+        day,
+        level: st && st in STATUS_LEVEL ? STATUS_LEVEL[st] : null,
+        gap: null,
+      };
+    });
+
+  // Bridge missing days with a red segment: interpolate between the nearest
+  // known days on both sides (flat toward the edge of the month).
+  {
+    const knownIdx = chartData
+      .map((d, i) => (d.level !== null ? i : -1))
+      .filter((i) => i >= 0);
+    if (knownIdx.length > 0) {
+      for (let i = 0; i < chartData.length; i++) {
+        if (chartData[i].level !== null) continue;
+        const prev = [...knownIdx].reverse().find((k) => k < i);
+        const next = knownIdx.find((k) => k > i);
+        let v: number | null = null;
+        if (prev !== undefined && next !== undefined) {
+          const pv = chartData[prev].level as number;
+          const nv = chartData[next].level as number;
+          v = pv + ((nv - pv) * (i - prev)) / (next - prev);
+        } else if (prev !== undefined) {
+          v = chartData[prev].level as number;
+        } else if (next !== undefined) {
+          v = chartData[next].level as number;
+        }
+        chartData[i].gap = v;
+        // Anchor the red segment to the neighbouring known points
+        if (prev !== undefined) chartData[prev].gap = chartData[prev].level;
+        if (next !== undefined) chartData[next].gap = chartData[next].level;
+      }
+    }
+  }
 
   // Item stats: % ready per checklist item over the month
   const statFor = (code: string, role: string) => {
@@ -214,21 +245,49 @@ export default function MonthlyReport() {
                     width={80}
                   />
                   <Tooltip
-                    formatter={(value: any) => [LEVEL_LABEL[value as number] ?? '-', 'สถานะ']}
+                    formatter={(value: any, name: any) =>
+                      name === 'gap'
+                        ? ['ไม่มีข้อมูลการตรวจ', 'สถานะ']
+                        : [LEVEL_LABEL[Math.round(value as number)] ?? '-', 'สถานะ']
+                    }
                     labelFormatter={(day: any) => `วันที่ ${day} ${THAI_MONTHS_FULL[month - 1]}`}
                   />
+                  {/* Red bridge across days without data */}
                   <Line
-                    type="stepAfter"
+                    type="monotone"
+                    dataKey="gap"
+                    stroke="#dc2626"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                    legendType="none"
+                  />
+                  {/* Curved main line through inspected days */}
+                  <Line
+                    type="monotone"
                     dataKey="level"
                     stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
+                    strokeWidth={2.5}
+                    dot={{ r: 3.5, fill: '#2563eb' }}
                     connectNulls={false}
                     isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
             )}
+            <div className="flex justify-center gap-6 text-xs text-gray-600 mt-2">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block w-6 h-0.5 bg-blue-600 rounded"></span>
+                มีการตรวจ
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block w-6 border-t-2 border-dashed border-red-600"></span>
+                ไม่มีข้อมูลการตรวจ
+              </span>
+            </div>
           </div>
 
           {/* Per-item % readiness table */}
