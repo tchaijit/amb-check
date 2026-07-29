@@ -198,8 +198,20 @@ export default function InspectPage() {
       checklistForValidation.some((i) => i.code.startsWith(parentCode + '.'));
 
     for (const c of checklistForValidation) {
-      // Skip header rows (parent of sub-items)
-      if (!c.code.includes('.') && hasSubItems(c.code)) continue;
+      // Header rows (parent of sub-items): no status radio, but their own inputs are still required
+      if (!c.code.includes('.') && hasSubItems(c.code)) {
+        if (c.multiInputs) {
+          const blanks = c.multiInputs.filter(
+            (mi) => !((items[c.code]?.[mi.key] || '').toString().trim())
+          );
+          if (blanks.length > 0) {
+            missing.push(
+              `ข้อ ${c.code} - ${blanks.map((b) => b.label.split(' / ')[0]).join(', ')}`
+            );
+          }
+        }
+        continue;
+      }
 
       // Status check (gauge items derive status from slider, dualTanks may also)
       if (!c.hasGauge && !c.dualTanks) {
@@ -245,7 +257,9 @@ export default function InspectPage() {
       alert(`กรุณาตรวจสอบและกรอกข้อมูลให้ครบ:\n• ${top.join('\n• ')}${more}`);
       // Scroll to first missing
       const firstCode = checklistForValidation.find((c) => {
-        if (!c.code.includes('.') && hasSubItems(c.code)) return false;
+        if (!c.code.includes('.') && hasSubItems(c.code)) {
+          return !!c.multiInputs?.some((mi) => !((items[c.code]?.[mi.key] || '').toString().trim()));
+        }
         if (!c.hasGauge && !c.dualTanks) {
           const st = items[c.code]?.status;
           if (st !== 'normal' && st !== 'abnormal' && !(c.inspectorRole === 'nurse' && st === 'na')) return true;
@@ -531,15 +545,45 @@ export default function InspectPage() {
               const isSubItem = item.code.includes('.');
               const hasSubItems = !isSubItem && checklist.some(i => i.code.startsWith(item.code + '.'));
 
-              // If it's a main header with sub-items, only show the header
+              // If it's a main header with sub-items, show the header (plus its own inputs, if any)
               if (!isSubItem && hasSubItems) {
                 return (
-                  <div key={item.code} className="mt-6 mb-2">
+                  <div key={item.code} id={`item-${item.code}`} className="mt-6 mb-2">
                     <div className="bg-blue-50 border-l-4 border-primary px-4 py-3 rounded">
                       <h3 className="text-lg font-bold text-primary">
                         {item.code}.{item.icon && item.icon} {item.name}
                       </h3>
                     </div>
+                    {item.multiInputs && (
+                      <div className="grid sm:grid-cols-2 gap-3 mt-3 px-4">
+                        {item.multiInputs.map((mi) => {
+                          const val = items[item.code]?.[mi.key] || '';
+                          const empty = !val.toString().trim();
+                          return (
+                            <div key={mi.key}>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                {mi.label} <span className="text-red-500">*</span>
+                              </label>
+                              {mi.type === 'date' ? (
+                                <DateInput
+                                  value={val}
+                                  onChange={(v) => handleItemChange(item.code, mi.key, v)}
+                                  className={empty ? 'border-red-300' : ''}
+                                />
+                              ) : (
+                                <input
+                                  type={mi.type || 'text'}
+                                  required
+                                  value={val}
+                                  onChange={(e) => handleItemChange(item.code, mi.key, e.target.value)}
+                                  className={`input-field text-sm w-full ${empty ? 'border-red-300' : ''}`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               }
